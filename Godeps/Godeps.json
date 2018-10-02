@@ -1,0 +1,28 @@
+{
+	"ImportPath": "github.com/mitghi/protox",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Deps": [
+		{
+			"ImportPath": "github.com/google/uuid",
+			"Comment": "0.2",
+			"Rev": "064e2069ce9c359c118179501254f67d7d37ba24"
+		},
+		{
+			"ImportPath": "github.com/mitghi/lfpool",
+			"Rev": "6e080670b8854e241a095b6126d627503350cea3"
+		},
+		{
+			"ImportPath": "github.com/mitghi/rlog",
+			"Rev": "938b38cca269dcf6855fb0fe3f84366bad5a6a95"
+		},
+		{
+			"ImportPath": "github.com/mitghi/timer",
+			"Rev": "7851fd7376ce7b7899a48d1635233e523e0d5524"
+		},
+		{
+			"ImportPath": "golang.org/x/net/websocket",
+			"Rev": "f2499483f923065a842d38eb4c7f1927e6fc6e6d"
+		}
+	]
+}
