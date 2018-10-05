@@ -263,41 +263,41 @@ func NewPacket(data *[]byte, code byte, length int) *Packet {
 }
 
 // SetData sets internal byte slice pointer to `data` argument.
-func (self *Packet) SetData(data *[]byte) {
-	self.Data = data
+func (p *Packet) SetData(data *[]byte) {
+	p.Data = data
 }
 
 // SetCode sets internal control packet code to `code` argument.
-func (self *Packet) SetCode(code byte) {
-	self.Code = code
+func (p *Packet) SetCode(code byte) {
+	p.Code = code
 }
 
 // SetLength sets the total length of byte slice `data`.
-func (self *Packet) SetLength(length int) {
-	self.Length = length
+func (p *Packet) SetLength(length int) {
+	p.Length = length
 }
 
 // IsValid returns wether a given control packet code is in the mapping or not.
-func (self *Packet) IsValid() bool {
-	if self.Code == 0 {
+func (p *Packet) IsValid() bool {
+	if p.Code == 0 {
 		return false
 	}
-	return IsValidCommand(self.Code)
+	return IsValidCommand(p.Code)
 }
 
 // GetData returns a pointer to packet data.
-func (self *Packet) GetData() *[]byte {
-	return self.Data
+func (p *Packet) GetData() *[]byte {
+	return p.Data
 }
 
 // GetCode returns the associated Protocol Command Code.
-func (self *Packet) GetCode() byte {
-	return self.Code
+func (p *Packet) GetCode() byte {
+	return p.Code
 }
 
 // GetLength returns bytes total size.
-func (self *Packet) GetLength() int {
-	return self.Length
+func (p *Packet) GetLength() int {
+	return p.Length
 }
 
 // MsgEnvelope is a struct that conforms to `protobse.MsgEnvelopeInterface`.

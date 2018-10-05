@@ -20,18 +20,26 @@
 * SOFTWARE.
 */
 
-// Protocol is the main package for handling low level operations. It
-// is the underlaying subsystem for each server willing to use Protox.
+// package protocol provide implementation of protox data units.
 package protocol
 
 import (
 	"bytes"
+  "errors"
 
 	"github.com/google/uuid"
 
 	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/protobase"
 )
+
+/*
+* TODO:
+* - make uid provider configurable 
+* - refactor uid provider into a package
+* - support alternative meta information ( refactor into abstract processor, pattern matching to user-provided criteria )
+* - intenral cmd flag set for management console
+*/  
 
 // Log is central logger
 var logger protobase.LoggingInterface
@@ -41,8 +49,14 @@ func init() {
 	logger = logging.NewLogger("ProtoConnection")
 }
 
-// Protocol is protocol structure embedded in each packet. It has functionalities
-// for parsing and crafting packets.
+// Protocol error messages
+var (
+  EINVLWRTBFR error = errors.New("protocol: no write buffer to use.")
+)
+
+// Protocol is protocol structure embedded 
+// in each packet. It has functionalities for
+// parsing and crafting packets.
 type Protocol struct {
 	protobase.EDProtocol
 	// TODO
@@ -54,12 +68,15 @@ type Protocol struct {
 	Id      *uuid.UUID
 }
 
-// ProtoMeta is meta information embedded in each packet. It contains common
-// information such as Quality of Service, Duplicate flag, Retain flag and
+// ProtoMeta is meta information embedded
+// in each packet. It contains common
+// data such as Quality of Service,
+// Duplicate flag, Retain flag and
 // an ID for message identification.
 type ProtoMeta struct {
 	// TODO
-	//  add rest of fields
+	//  extend meta fields
+  //  rearrange struct fields
 	Qos        byte
 	Dup        bool
 	Ret        bool
@@ -68,7 +85,9 @@ type ProtoMeta struct {
 	HasSession bool
 }
 
-type ConStateInterface interface {
+// ConStateInterface is the requirement
+// for implementing protox event handler.
+type ConStateInterface interface {  
 	onCONNECT(packet *Packet)
 	onCONNACK(packet *Packet)
 	onPUBLISH(packet *Packet)
@@ -79,19 +98,24 @@ type ConStateInterface interface {
 	onPONG(packet *Packet)
 	onDISCONNECT(packet *Packet)
 	onQUEUE(packet *Packet)
-	HandleDefault(packet *Packet) (status bool)
-	Handle(packet *Packet)
-	Run()
-	SetNextState()
+	HandleDefault(packet *Packet) (status bool) // dispatch loop
+	Handle(packet *Packet)                      // bootstrap routine
+	Run()                                       // main routine
+	SetNextState()                              // push state handler
 }
 
-// ConnectionState is a interface for status of a connection. Each state
-// must implement all of its functionalities, during different stages in
-// the program, data will be passed between states which changes the behavior
-// of its underlaying functionalities. For example during `Genesis` stage, any
-// control packet besides `Connect` results in immediate disconnection from the
-// broker. After `Genesis`, data will be passed to `Online` state which is opposite
-// of `Genesis` state ( `Connect` results in immediate termination ).
+// ConnectionState is the interface for status 
+// of a connection. Each state must implement 
+// all of its functionalities, during different
+// stages in the program, data will be passed
+// between states which changes the behavior
+// of its underlying functionalities. For 
+// example, during `Genesis` stage, any control
+// packet besides `Connect` results in immediate 
+// disconnection from the broker. After `Genesis`,
+// data will be passed to `Online` state which is
+// opposite of `Genesis` state ( `Connect` results
+// in immediate termination ).
 type ConnectionState interface {
 	ConStateInterface
 	SetClient(client protobase.ClientInterface)
@@ -99,6 +123,9 @@ type ConnectionState interface {
 	Shutdown()
 }
 
+// baseControlInterface is the interface 
+// to conform to fulfilling requirements
+// of internal management console.
 type baseControlInterface interface {
 	Shutdown()
 }

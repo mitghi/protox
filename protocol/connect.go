@@ -222,20 +222,18 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 	return err
 }
 
-// TODO: complete this function, this is a stub implementation.
+
 func (cn *Connect) Metadata() *ProtoMeta {
 	return nil
 }
 
-// TODO: complete this function, this is a stub implementation.
+
 func (cn *Connect) String() string {
-	// return fmt.Sprintf("\n\tUsername(%s), Password(NONE),\n\t ClientId(%s), KeepAlive(%d), Version(%s).",
-	// 	cn.Username, cn.ClientId, cn.KeepAlive, cn.Version)
-	return fmt.Sprintf("\n\tUsername(%s), Password(%s),\n\t ClientId(%s), KeepAlive(%d), Version(%s).",
-		cn.Username, cn.Password, cn.ClientId, cn.KeepAlive, cn.Version)  
+	return fmt.Sprintf("\n\tUsername(%s), Password(NONE),\n\t ClientId(%s), KeepAlive(%d), Version(%s).",
+		cn.Username, cn.ClientId, cn.KeepAlive, cn.Version)
 }
 
-// TODO: complete this function, this is a stub implementation.
+
 func (cn *Connect) UUID() (uid uuid.UUID) {
 	uid = (*cn.Protocol.Id)
 	return uid

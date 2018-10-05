@@ -55,58 +55,58 @@ func NewConnack() *Connack {
 }
 
 // Encode is a routine for encoding `Connack` packet.
-func (self *Connack) Encode() (err error) {
+func (ca *Connack) Encode() (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-	if self.Encoded != nil {
+	if ca.Encoded != nil {
 		return
 	}
 
 	var (
 		varHeader bytes.Buffer
 		flags     uint8
-		cmd       = self.Command
+		cmd       = ca.Command
 	)
 
 	// TODO
 	// . add response options
-	if self.Meta.HasSession {
+	if ca.Meta.HasSession {
 		flags |= RHASSESSION // 0x8
 	}
-	if self.SessionId != "" {
+	if ca.SessionId != "" {
 		flags |= 0x4
 	}
-	if self.Meta.CleanStart {
+	if ca.Meta.CleanStart {
 		flags |= 0x2
 	}
 	cmd |= flags
 
-	self.Header.WriteByte(cmd)
-	SetUint8(self.ResultCode, &varHeader)
-	if self.SessionId != "" {
-		SetString(self.SessionId, &varHeader)
+	ca.Header.WriteByte(cmd)
+	SetUint8(ca.ResultCode, &varHeader)
+	if ca.SessionId != "" {
+		SetString(ca.SessionId, &varHeader)
 	}
-	EncodeLength(int32(varHeader.Len()), self.Header)
-	self.Header.Write(varHeader.Bytes())
-	self.Encoded = self.Header
+	EncodeLength(int32(varHeader.Len()), ca.Header)
+	ca.Header.Write(varHeader.Bytes())
+	ca.Encoded = ca.Header
 
 	return err
 }
 
 // SetSessionId sets the `SessionId` in the header.
-func (self *Connack) SetSessionId(sessionId string) {
-	self.SessionId = sessionId
+func (ca *Connack) SetSessionId(sessionId string) {
+	ca.SessionId = sessionId
 }
 
 // SetResultCode sets the `ResultCode` in the header.
-func (self *Connack) SetResultCode(resultCode byte) {
-	self.ResultCode = resultCode
+func (ca *Connack) SetResultCode(resultCode byte) {
+	ca.ResultCode = resultCode
 }
 
 // DecodeFrom decodes a packet from `buff` argument. It is not implemented
 // because it is always the server responsibilty to send this packet.
-func (self *Connack) DecodeFrom(buff *[]byte) (err error) {
+func (ca *Connack) DecodeFrom(buff *[]byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -127,29 +127,29 @@ func (self *Connack) DecodeFrom(buff *[]byte) (err error) {
 	header = (*buff)[:hbnd]
 	opts = header[0] & 0x0f
 	hasSession, hasSessionId, cleanStart := ParseHCOptions(opts)
-	self.Meta.HasSession = hasSession
-	self.Meta.CleanStart = cleanStart
+	ca.Meta.HasSession = hasSession
+	ca.Meta.CleanStart = cleanStart
 	/* d e b u g */
 
 	packets = (*buff)[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
-	self.ResultCode = GetUint8(buffrd, &packetRemaining)
+	ca.ResultCode = GetUint8(buffrd, &packetRemaining)
 	/* d e b u g */
 	// if packetRemaining > 0 {
 	// 	logger.FDebug("DecodeFrom", "packetRemaining>0", packetRemaining)
-	// 	self.SessionId = GetString(buffrd, &packetRemaining)
+	// 	ca.SessionId = GetString(buffrd, &packetRemaining)
 	// }
 	/* d e b u g */
 	if hasSessionId && packetRemaining > 0 {
-		self.SessionId = GetString(buffrd, &packetRemaining)
+		ca.SessionId = GetString(buffrd, &packetRemaining)
 	}
 	return err
 }
 
 // Decode decodes the internal data. It is not implemented because
 // it is always server responsibility to send th is packet.
-func (self *Connack) Decode() (err error) {
+func (ca *Connack) Decode() (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -158,28 +158,28 @@ func (self *Connack) Decode() (err error) {
 }
 
 // TODO: complete this function, this is a stub implementation.
-func (self *Connack) Metadata() *ProtoMeta {
+func (ca *Connack) Metadata() *ProtoMeta {
 	return nil
 }
 
 // TODO: complete this function, this is a stub implementation.
-func (self *Connack) String() string {
+func (ca *Connack) String() string {
 	return ""
 }
 
 // TODO: complete this function, this is a stub implementation.
-func (self *Connack) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
+func (ca *Connack) UUID() (uid uuid.UUID) {
+	uid = (*ca.Protocol.Id)
 	return uid
 }
 
 // GetPacket creates a pointer to a new `Packet` created by using
 // internal `Encoded` data.
-func (self *Connack) GetPacket() protobase.PacketInterface {
+func (ca *Connack) GetPacket() protobase.PacketInterface {
 	var (
-		data []byte  = self.Encoded.Bytes()
+		data []byte  = ca.Encoded.Bytes()
 		dlen int     = len(data)
-		code byte    = self.Command
+		code byte    = ca.Command
 		pckt *Packet = NewPacket(&data, code, dlen)
 	)
 
@@ -188,8 +188,8 @@ func (self *Connack) GetPacket() protobase.PacketInterface {
 
 // TODO:
 
-// func (self *Connack) SetCode(code byte) {
-//   self.SetCode(code)
+// func (ca *Connack) SetCode(code byte) {
+//   ca.SetCode(code)
 // }
 
 // TODO ------------------------------
@@ -208,20 +208,20 @@ func NewConnackOpts() *ConnackOpts {
 	return &ConnackOpts{optcode: CCONNACK}
 }
 
-func (self *ConnackOpts) StateCode() protobase.OptCode {
-	return (protobase.OptCode)(self.optcode)
+func (ca *ConnackOpts) StateCode() protobase.OptCode {
+	return (protobase.OptCode)(ca.optcode)
 }
-func (self *ConnackOpts) Opts() interface{} {
+func (ca *ConnackOpts) Opts() interface{} {
 	// TODO
 	return nil
 }
-func (self *ConnackOpts) Match(protobase.OptCode) bool {
+func (ca *ConnackOpts) Match(protobase.OptCode) bool {
 	return false
 }
 
-func (self *ConnackOpts) parseFrom(cack *Connack) {
-	self.ResultCode = cack.ResultCode
-	self.SessionId = cack.SessionId
-	self.HasSession = cack.Meta.HasSession
-	self.CleanStart = cack.Meta.CleanStart
+func (ca *ConnackOpts) parseFrom(cack *Connack) {
+	ca.ResultCode = cack.ResultCode
+	ca.SessionId = cack.SessionId
+	ca.HasSession = cack.Meta.HasSession
+	ca.CleanStart = cack.Meta.CleanStart
 }

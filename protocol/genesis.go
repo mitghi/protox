@@ -66,36 +66,36 @@ func NewGenesis(conn *Connection) *Genesis {
 
 // SetNextState pushes the state machine into its next stage.
 // Initially it is from Genesis to Online ( Genesis -> Online -> .... ).
-func (self *Genesis) SetNextState() {
-	newState := NewOnline(self.Conn)
-	newState.SetClient(self.client)
-	newState.SetServer(self.server)
-	self.Conn.State = newState
+func (g *Genesis) SetNextState() {
+	newState := NewOnline(g.Conn)
+	newState.SetClient(g.client)
+	newState.SetServer(g.server)
+	g.Conn.State = newState
 
 	logger.Debug("+ [Genesis] Genesis for client [Status] ready.")
 }
 
 // cleanUp is a routine which removes pointers from the struct.
-func (self *Genesis) cleanUp() {
-	self.Conn = nil
-	self.client = nil
-	self.server = nil
+func (g *Genesis) cleanUp() {
+	g.Conn = nil
+	g.client = nil
+	g.server = nil
 }
 
 // Shutdown terminates the state and calls the handlers to terminate
 // and undo all side effects.
-func (self *Genesis) Shutdown() {
-	self.client.Disconnected(protobase.PUForceTerminate)
+func (g *Genesis) Shutdown() {
+	g.client.Disconnected(protobase.PUForceTerminate)
 }
 
 // Handle is only a stub to satisfy interface requirements ( for Genesis stage ).
-func (self *Genesis) Handle(packet *Packet) {
+func (g *Genesis) Handle(packet *Packet) {
 }
 
 // HandleDefault is the first function invoked in `Genesis` when a new state struct is created.
 // It passes credentials from `Connect` packet to a `AuthInterface` implementor and upgrades
 // from `Genesis` to `Online` stage. It sends a `Connack` with appropirate status code, regardless.
-func (self *Genesis) HandleDefault(packet *Packet) (status bool) {
+func (g *Genesis) HandleDefault(packet *Packet) (status bool) {
 	// TODO
 	//  add defer to cleanUp and check its performance impact
 	var (
@@ -103,7 +103,7 @@ func (self *Genesis) HandleDefault(packet *Packet) (status bool) {
 		valid   bool                    = false
 		p       *Connect                = NewConnect()
 		cack    *Connack                = NewConnack()
-		authsys protobase.AuthInterface = self.Conn.GetAuthenticator()
+		authsys protobase.AuthInterface = g.Conn.GetAuthenticator()
 		creds   protobase.CredentialsInterface
 		rpacket *Packet
 		newcl   protobase.ClientInterface
@@ -115,13 +115,13 @@ func (self *Genesis) HandleDefault(packet *Packet) (status bool) {
 		logger.Debug("- [Fatal] invalid connection packet in [Genesis].", err)
 		// TODO
 		//  undo side effects
-		self.gotFirstPacket = false
-		self.cleanUp()
+		g.gotFirstPacket = false
+		g.cleanUp()
 		return false
 	}
 	logger.FDebug("HandleDefault", "* [Packet] connection packet content.", p.String())
 	// connection is established, can push into the next state
-	self.gotFirstPacket = true
+	g.gotFirstPacket = true
 	// TODO
 	// . improve by directly pass connect packet to auth subsystem
 	creds, err := authsys.MakeCreds(p.Username, p.Password, p.ClientId)
@@ -131,43 +131,43 @@ func (self *Genesis) HandleDefault(packet *Packet) (status bool) {
 	}
 	// TODO/NOTICE
 	//  do not create a new client until credentials are valid ( reduce memory alloc. overhead )
-	newcl = self.Conn.clientDelegate(p.Username, p.Password, p.ClientId)
+	newcl = g.Conn.clientDelegate(p.Username, p.Password, p.ClientId)
 	// NOTE:
 	// . check error explicitely
 	if valid, err = authsys.CanAuthenticate(creds); valid {
 		cack.SetResultCode(RESPOK)
 		cack.Encode()
 		rpacket = cack.GetPacket().(*Packet)
-		self.Conn.SetClient(newcl)
-		self.SetNextState() // Genesis -> Online
+		g.Conn.SetClient(newcl)
+		g.SetNextState() // Genesis -> Online
 		if p.Meta.CleanStart {
 			// drop queued packets
-			self.Conn.storage.AddClient(p.Username)
+			g.Conn.storage.AddClient(p.Username)
 			// TODO
 			// . drop subscriptions
 		}
-		self.Conn.SendDirect(rpacket)
+		g.Conn.SendDirect(rpacket)
 		// TODO
 		//  these lines are moves to cleanUp, remove them when
 		//  its finalized.
-		//  self.Conn = nil
-		//  self.client = nil
-		self.cleanUp()
+		//  g.Conn = nil
+		//  g.client = nil
+		g.cleanUp()
 		return true
 	} else {
 		cack.SetResultCode(RESPFAIL)
 		cack.Encode()
 		rpacket = cack.GetPacket().(*Packet)
-		self.Conn.SetClient(newcl)
-		self.Conn.SendDirect(rpacket)
+		g.Conn.SetClient(newcl)
+		g.Conn.SendDirect(rpacket)
 		// TODO
 		//  improve error handling
-		self.cleanUp()
+		g.cleanUp()
 		return false
 	}
 }
 
-func (self *Genesis) onPONG(packet *Packet) {
+func (g *Genesis) onPONG(packet *Packet) {
 	// TODO
 	logger.FDebug("onPONG", "* [Pong] packet received.")
 }

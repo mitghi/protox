@@ -35,12 +35,13 @@ type COnline struct {
 	Conn *CLBConnection
 }
 
-// MARK: Online
+// MARK: COnline
 
 // NewOnline returns a pointer to a new `Online` struct. This is the where
 // interactions with a connected/authorized client happens.
 func NewCOnline(conn *CLBConnection) *COnline {
-	result := &COnline{
+	var (
+    co *COnline = &COnline{
 		constate: constate{
 			constatebase: constatebase{
 				Conn: conn,
@@ -49,46 +50,50 @@ func NewCOnline(conn *CLBConnection) *COnline {
 			server: nil,
 		},
 		Conn: conn,
-	}
-	result.client = conn.GetClient()
-	return result
+    }
+  )
+	co.client = conn.GetClient()
+	return co
 }
 
 // HandleDefault is the default handler ( stub for COnline ).
-func (self *COnline) HandleDefault(packet *Packet) (status bool) {
+func (co *COnline) HandleDefault(packet *Packet) (status bool) {
+  // NOP
 	return true
 }
 
 // Shutdown sets the status to error which notifies the supervisor
 // and cleanly terminates the connection.
-func (self *COnline) Shutdown() {
-	logger.Debug("* [Genesis] Closing.")
-	atomic.StoreUint32(&(self.Conn).Status, STATERR)
+func (co *COnline) Shutdown() {
+  const fn string = "Shutdown"
+	logger.FDebug(fn, "* [Genesis] closing.")
+	atomic.StoreUint32(&(co.Conn).Status, STATERR)
 }
 
 // onCONNECT is not valid in this stage.
-func (self *COnline) onCONNECT(packet *Packet) {
-	// TODO
-	// NOTE
-	// . this is new
-	self.Shutdown()
-	self.Conn.protocon.Conn.Close()
+func (co *COnline) onCONNECT(packet *Packet) {
+  // violates client/server policy
+  // terminate
+	co.Shutdown()
+	co.Conn.protocon.Conn.Close()
 }
 
 // onCONNACK is not valid in this stage.
-func (self *COnline) onCONNACK(packet *Packet) {
+func (co *COnline) onCONNACK(packet *Packet) {
 	// TODO
+  const fn string = "onCONNACK"
+  logger.FWarn(fn, "-* [COnline] this routine is unimplemented.")
 }
 
 // onPUBLISH is the handler for `Publish` packets.
-func (self *COnline) onPUBLISH(packet *Packet) {
+func (co *COnline) onPUBLISH(packet *Packet) {
 	var publish *Publish = NewPublish()
 	if err := publish.DecodeFrom(packet.Data); err != nil {
 		logger.Debug("- [DecodeErr(onPublish)] Unable to decode data.", err)
-		self.Shutdown()
+		co.Shutdown()
 		return
 	}
-	if stat := self.Conn.storage.AddInbound(publish); stat == false {
+	if stat := co.Conn.storage.AddInbound(publish); stat == false {
 		logger.Debug("? [NOTICE] addinbound returned false (conline/publish).")
 	}
 	var puback *Puback = NewPuback()
@@ -96,7 +101,7 @@ func (self *COnline) onPUBLISH(packet *Packet) {
 		puback.Meta.Qos, puback.Meta.MessageId = publish.Meta.Qos, publish.Meta.MessageId
 		if err := puback.Encode(); err != nil {
 			logger.FError("onPUBLISH", "- [CONLINE] Error while encoding puback.")
-			self.Shutdown()
+			co.Shutdown()
 			return
 		}
 		logger.FTracef(1, "onPUBLISH", "* [QoS] packet QoS(%b) Duplicate(%t) MessageID(%d).", publish.Meta.Qos, publish.Meta.Dup, int(publish.Meta.MessageId))
@@ -104,76 +109,75 @@ func (self *COnline) onPUBLISH(packet *Packet) {
 		logger.FTrace(1, "onPUBLISH", "* [PubAck] sending packet with content", pckt.Data)
 		// NOTE
 		// . this has changed
-		// self.Conn.Send(pckt)
-		self.Conn.SendPrio(pckt)
-		if stat := self.Conn.storage.DeleteIn(publish); stat == false {
+		// co.Conn.Send(pckt)
+		co.Conn.SendPrio(pckt)
+		if stat := co.Conn.storage.DeleteIn(publish); stat == false {
 			logger.Debug("? [NOTICE] deleteinbound returned false (conline/publish).")
 		}
 	}
 	pb := NewMsgBox(publish.Meta.Qos, publish.Meta.MessageId, protobase.MDInbound, NewMsgEnvelope(publish.Topic, publish.Message))
 	// publish box clone
 	pbc := pb.Clone(protobase.MDInbound)
-
+  /* d e b u g */
 	// NOTE
 	// . this has changed
 	// if publish.Meta.Qos > 0 {
-	// 	self.Conn.clblock.Lock()
+	// 	co.Conn.clblock.Lock()
 	// 	// because publish is received when a subscribtion
 	// 	// for rotue exists.
-	// 	callback, ok := self.Conn.clbsub[puback.Meta.MessageId]
+	// 	callback, ok := co.Conn.clbsub[puback.Meta.MessageId]
 	// 	if ok {
-	// 		delete(self.Conn.clbsub, puback.Meta.MessageId)
+	// 		delete(co.Conn.clbsub, puback.Meta.MessageId)
 	// 	}
-	// 	self.Conn.clblock.Unlock()
-
+	// 	co.Conn.clblock.Unlock()
 	// 	if ok && callback != nil {
 	// 		go func() {
 	// 			callback(nil, pbc)
-	// 			self.client.Publish(pbc)
+	// 			co.client.Publish(pbc)
 	// 		}()
 	// 		return
 	// 	}
 	// }
-
 	// if publish.Meta.Qos > 0 {
 	// 	if ok && callback != nil {
 	// 		go func() {
-	// 			self.client.Publish(pbc)
+	// 			co.client.Publish(pbc)
 	// 		}()
 	// 		return
 	// 	}
 	// }
-
 	// TODO
 	// . send this to a worker thread
-	// go func() { self.client.Publish(pbc) }()
-	self.client.Publish(pbc)
-
+	// go func() { co.client.Publish(pbc) }()
+  /* d e b u g */  
+	co.client.Publish(pbc)
 }
 
 // onSUBSCRIBE is the handler for `Subscribe` packets.
-func (self *COnline) onSUBSCRIBE(packet *Packet) {
+func (co *COnline) onSUBSCRIBE(packet *Packet) {
 	logger.Debug("* [Subscribe] packet is received.")
+  /* d e b u g */
 	// subscribe := NewSubscribe()
 	// if err := subscribe.DecodeFrom(packet.Data); err != nil {
-	// 	self.Shutdown()
+	// 	co.Shutdown()
 	// 	return
 	// }
 	// pb := NewMsgBox(subscribe.Meta.Qos, protobase.MDInbound, NewMsgEnvelope(subscribe.Topic, nil))
-	// self.client.Subscribe(pb)
-	// self.server.NotifySubscribe(self.Conn, pb)
-	// self.client.Subscribe(subscribe.Topic)
-	// self.server.NotifySubscribe(subscribe.Topic, self.Conn)
+	// co.client.Subscribe(pb)
+	// co.server.NotifySubscribe(co.Conn, pb)
+	// co.client.Subscribe(subscribe.Topic)
+	// co.server.NotifySubscribe(subscribe.Topic, co.Conn)
+  /* d e b u g */  
 }
 
 // onPING is the heartbeat handler ( other packets reset its timer as well ).
-func (self *COnline) onPING(packet *Packet) {
+func (co *COnline) onPING(packet *Packet) {
 	logger.Debug("+ [Heartbeat] Received.")
 }
 
 // onSUBACK is a handler which removes the outbound subscribe
 // message when QoS >0.
-func (self *COnline) onSUBACK(packet *Packet) {
+func (co *COnline) onSUBACK(packet *Packet) {
 	// TODO
 	var (
 		pa  *Suback = NewSuback()
@@ -185,18 +189,18 @@ func (self *COnline) onSUBACK(packet *Packet) {
 		return
 	}
 
-	oidstore := self.Conn.storage.GetIDStoreO()
+	oidstore := co.Conn.storage.GetIDStoreO()
 	msgid := pa.Meta.MessageId
 	uid, ok := oidstore.GetUUID(msgid)
 	if !ok {
 		logger.FWarn("onSUBACK", "- [IDStore/Suback] no packet with msgid found.", "msgid", msgid)
 		return
 	}
-	np, ok := self.Conn.storage.GetOutbound(uid)
+	np, ok := co.Conn.storage.GetOutbound(uid)
 	if !ok {
 		logger.FWarn("onSUBACK", "- [MessageBox/Suback] no packet with uid found.", uid)
 	}
-	if !self.Conn.storage.DeleteOut(np) {
+	if !co.Conn.storage.DeleteOut(np) {
 		logger.FWarn("onSUBACK", "- [MessageBox/Suback] failed to remove message.")
 	}
 	oidstore.FreeId(msgid)
@@ -210,100 +214,81 @@ func (self *COnline) onSUBACK(packet *Packet) {
 
 	pb := NewMsgBox(npc.Meta.Qos, npc.Meta.MessageId, protobase.MDInbound, NewMsgEnvelope(npc.Topic, nil))
 	pbc := pb.Clone(protobase.MDInbound)
-	self.Conn.clblock.Lock()
-	callback, ok := self.Conn.clbsub[msgid]
+  /* critical section */
+	co.Conn.clblock.Lock()
+	callback, ok := co.Conn.clbsub[msgid]
 	if ok {
-		delete(self.Conn.clbsub, msgid)
+		delete(co.Conn.clbsub, msgid)
 	}
-	self.Conn.clblock.Unlock()
-
+	co.Conn.clblock.Unlock()
+  /* critical section - end */  
 	if ok && callback != nil {
-		// go func() {
 		callback(nil, pbc)
-		self.client.Subscribe(pbc)
-		// }()
+		co.client.Subscribe(pbc)
 		return
 	}
-
-	// TODO
-	// . send this to a worker thread
-	// go func() { self.client.Subscribe(pbc) }()
-	// self.client.Subscribe(pbc)
-
 }
 
 // onPUBACK is a handler which removes the outbound publish
 // message when QoS >0.
-func (self *COnline) onPUBACK(packet *Packet) {
+func (co *COnline) onPUBACK(packet *Packet) {
 	// TODO
 	var (
 		pa  *Puback = NewPuback()
 		uid uuid.UUID
 	)
-
 	logger.FDebug("onPUBACK", "+ [PubAck] packet received.")
 	if err := pa.DecodeFrom(packet.Data); err != nil {
 		logger.FDebug("onPUBACK", "- [Decode] uanble to decode in [PubAck].", err)
 		return
 	}
-
-	oidstore := self.Conn.storage.GetIDStoreO()
+	oidstore := co.Conn.storage.GetIDStoreO()
 	msgid := pa.Meta.MessageId
 	uid, ok := oidstore.GetUUID(msgid)
 	if !ok {
 		logger.FWarn("onPUBACK", "- [IDStore/Puback] no packet with msgid found.", "msgid", msgid)
 		return
 	}
-	np, ok := self.Conn.storage.GetOutbound(uid)
+	np, ok := co.Conn.storage.GetOutbound(uid)
 	if !ok {
 		logger.FWarn("onPUBACK", "- [MessageBox/Puback] no packet with uid found.", uid)
 	}
-	if !self.Conn.storage.DeleteOut(np) {
+	if !co.Conn.storage.DeleteOut(np) {
 		logger.FWarn("onPUBACK", "- [MessageBox/Puback] failed to remove message.")
 	}
 	oidstore.FreeId(msgid)
-
 	npc := np.(*Publish)
 	if npc == nil {
 		// TODO
 		// . handle this case
 		logger.FWarn("onPUBACK", "- [MessageBox/Puback] npc==nil [FATAL].")
 	}
-
 	pb := NewMsgBox(npc.Meta.Qos, npc.Meta.MessageId, protobase.MDInbound, NewMsgEnvelope(npc.Topic, npc.Message))
-	self.Conn.clblock.Lock()
-	callback, ok := self.Conn.clbpub[msgid]
+  /* critical section */  
+	co.Conn.clblock.Lock()
+	callback, ok := co.Conn.clbpub[msgid]
 	if ok {
-		delete(self.Conn.clbpub, msgid)
+		delete(co.Conn.clbpub, msgid)
 	}
-	self.Conn.clblock.Unlock()
-
+	co.Conn.clblock.Unlock()
+  /* critical section - end */
 	if ok && callback != nil {
-		// go func() {
 		callback(nil, pb)
-		// NOTE
-		// . this has changed
-		// self.client.Publish(pb)
-		// }()
 		return
 	}
-	// NOTE
-	// . this has changed
-	// self.client.Publish(pb)
-	// go func() { self.client.Publish(pb) }()
 }
 
-func (self *COnline) onDISCONNECT(packet *Packet) {
+func (co *COnline) onDISCONNECT(packet *Packet) {
 	// TODO
 	logger.FDebug("onDISCONNECT", "+ [Disconnect] packet is received.")
-	self.Conn.protocon.Conn.Close()
+	co.Conn.protocon.Conn.Close()
 }
 
-func (self *COnline) onPONG(packet *Packet) {
+func (co *COnline) onPONG(packet *Packet) {
 	// TODO
 	logger.FDebug("onPONG", "* [Pong] packet received.")
 }
 
-func (self *COnline) onQueueAck(packet *Packet) {
+func (co *COnline) onQueueAck(packet *Packet) {
 	logger.FDebug("onQueueAck", "+ [Queue(Ack) packet is received.]")
 }
