@@ -1,4 +1,14 @@
-# Access Control List ( ACL )
+# auth
+
+Authentication subsystem.
+
+**Supported modules: **
+
+- [x] Access Control List
+- [ ] Token
+
+
+### Access Control List ( ACL )
 
 #### Description:
 ACL can be used to authorize, restrict or reject certain access, action or usage to resources. 
