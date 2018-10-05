@@ -60,6 +60,7 @@ func defaultAuthConfig() *auth.AuthConfig {
 				{"can", "publish", "self/location"},
 				{"can", "request", "self/access/upgrade"},
 				{"can", "subscribe", "a/simple/demo"},
+        {"can", "publish", "a/simple/demo"},
 			},
       "Reader": [][3]string{
         {"can", "subscribe", "a/simple/demo"},
