@@ -24,6 +24,7 @@ objectives for **Beta** version:
 - [X] Retain Storage
 - [X] Permissions
 - [ ] one-to-one  Request/Response
+- [ ] Persistent storage
 - [ ] Message Queue
 - [ ] Config parser
 
@@ -36,22 +37,28 @@ objectives for **Beta** version:
 - [ ] utils
 
 
-# Desired features
+# Features
 
-This is a wishlist for future versions.
+This is the wishlist for version 1.0.
 
 - [ ] [Raft Consensus Algorithm](https://raft.github.io/raft.pdf)
-- [ ] Proposals-over-Network (ex. job delegation, polls, stable matching, .... )
-- [ ] One-to-Many Request/Response
+- [ ] Proposals-over-Network (ex. job delegation, polls, stable matching, ... )
+- [ ] Stream processor
+- [ ] One-to-Many Request/Response ( with support for 3rd party Endpoints )
 - [ ] Buffered   Channels
 - [ ] Unbuffered Channels
 - [ ] Event Notifications
 - [ ] Event Multiplexing
 - [ ] Endpoints ( compatibility with 3rd party services )
 - [ ] Management Console
-- [ ] Signed Messages ( RSA, PGP, SHA256, SCRYPT)
+- [ ] Signed Messages ( RSA, PGP, SHA256, SCRYPT, ... )
 - [ ] Pluggable Authenication subsystem
 - [ ] Plugins subsystem
+- [ ] Cluster mode
+- [ ] Runtime storage subsystem
+- [ ] Promiscuous mode ( security )
+- [ ] Runtime memory forensic ( security )
+- [ ] ML Layer
 
 # Setup ( development )
 
@@ -274,5 +281,7 @@ Check more examples at [demos](./demos/).
 
 List of protox client libraries.
 
-- [Protox Client](https://github.com/mitghi/protox_client) ( Golang ).
-
+- [x] [Protox Client](https://github.com/mitghi/protox_client) ( Golang ).
+- [ ] [Protox Client](https://github.com/mitghi/protox_clswift) ( Swift ).
+- [ ] [Protox Client](https://github.com/mitghi/protox_clc) ( C ).
+- [ ] [Protox Client](https://github.com/mitghi/protox_clpy) ( Python ).
