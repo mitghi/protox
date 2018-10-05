@@ -1,5 +1,7 @@
 # protocol
 
+Protox binary protocol.
+
 # PDU ( protocol data unit )
 
 ## Queue
@@ -58,3 +60,9 @@ Options: **1** byte
 	|**Message**|bytes|
 
 
+# Work in progress
+
+- [ ] Chain to PDU extensions *.
+- [ ] Support other protocols
+- [ ] Support Adaptor
+* extending current PDUs to exceed 0xF points ( i.e. linking via 0x0F in control packet )
