@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 // Connack is a control packet. It acknowledges the incomming connections
@@ -180,7 +181,7 @@ func (ca *Connack) GetPacket() protobase.PacketInterface {
 		data []byte  = ca.Encoded.Bytes()
 		dlen int     = len(data)
 		code byte    = ca.Command
-		pckt *Packet = NewPacket(&data, code, dlen)
+		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 
 	return pckt
@@ -219,7 +220,7 @@ func (ca *ConnackOpts) Match(protobase.OptCode) bool {
 	return false
 }
 
-func (ca *ConnackOpts) parseFrom(cack *Connack) {
+func (ca *ConnackOpts) ParseFrom(cack *Connack) {
 	ca.ResultCode = cack.ResultCode
 	ca.SessionId = cack.SessionId
 	ca.HasSession = cack.Meta.HasSession

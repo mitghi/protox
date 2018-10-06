@@ -20,33 +20,36 @@
 * SOFTWARE.
 */
 
-package protocol
+// package packet contains PDUs
+package packet
 
-import (
-	"fmt"
-	"testing"
-	"github.com/mitghi/protox/protocol/packet"
+// Control packet map
+var (
+  PROTOCODES map[byte]string = map[byte]string{
+    0x01: "PCONNECT",
+    0x02: "PCONNACK",
+    0x04: "PQUEUE",
+    0x05: "PQUEUEACK",
+    0x06: "PPUBACK",
+    0x07: "PSUBSCRIBE",
+    0x08: "PSUBACK",
+    0x09: "PUNSUBSCRIBE",
+    0x0A: "PUNSUBACK",
+    0x0B: "PPUBLISH",
+    0x0C: "PPING",
+    0x0D: "PPONG",
+    0x0E: "PDISCONNECT",
+    // TODO
+    // 0x03: "PRESPONSE",
+    // 0x04: "PREQACK",
+    // 0x05: "PREQUEST",
+    // 0x06 : "PRESACK",    
+  }
 )
 
-func TestConnack(t *testing.T) {
-	c := NewConnack()
-	c.Meta.HasSession = true
-	c.ResultCode = RESPFAIL
-	c.Encode()
-
-	np := c.GetPacket().(*packet.Packet)
-	nc := NewConnack()
-	if err := nc.DecodeFrom(np.Data); err != nil {
-		t.Fatal("err!=nil, expected nil. Unable to decode packet.")
-	}
-	if nc.ResultCode != c.ResultCode {
-		t.Fatal("different resultcodes, expected same.", nc.ResultCode, c.ResultCode)
-	}
-	if nc.Meta.HasSession == false {
-		t.Fatal("nc.Meta.HasSession == false, expected true")
-	}
-	fmt.Println("")
-	for _, v := range c.Encoded.Bytes() {
-		fmt.Printf("%x ", v)
-	}
+// Packet represents a PDU ( protocol data unit ).
+type Packet struct {
+	Data   *[]byte
+	Code   byte
+	Length int
 }

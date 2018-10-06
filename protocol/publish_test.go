@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestPublishAndDecode(t *testing.T) {
@@ -41,7 +42,7 @@ func TestPublishAndDecode(t *testing.T) {
 		fmt.Printf("'% x' ", v)
 	}
 	b := conn.Encoded.Bytes()
-	p := conn.GetPacket().(*Packet)
+	p := conn.GetPacket().(*packet.Packet)
 	// header boundary
 	fmt.Println("content", b, p.Data, p.Code, p.Length)
 
@@ -76,7 +77,7 @@ func TestPublishWithQoS(t *testing.T) {
 	for _, v := range conn.Encoded.Bytes() {
 		fmt.Printf("%#x", v)
 	}
-	packet := conn.GetPacket().(*Packet)
+	packet := conn.GetPacket().(*packet.Packet)
 	conn2 := NewPublish()
 	if err := conn2.DecodeFrom(packet.Data); err != nil {
 		fmt.Println("cannot decode the packet from old package")

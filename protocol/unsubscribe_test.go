@@ -21,32 +21,3 @@
 */
 
 package protocol
-
-import (
-	"fmt"
-	"testing"
-	"github.com/mitghi/protox/protocol/packet"
-)
-
-func TestConnack(t *testing.T) {
-	c := NewConnack()
-	c.Meta.HasSession = true
-	c.ResultCode = RESPFAIL
-	c.Encode()
-
-	np := c.GetPacket().(*packet.Packet)
-	nc := NewConnack()
-	if err := nc.DecodeFrom(np.Data); err != nil {
-		t.Fatal("err!=nil, expected nil. Unable to decode packet.")
-	}
-	if nc.ResultCode != c.ResultCode {
-		t.Fatal("different resultcodes, expected same.", nc.ResultCode, c.ResultCode)
-	}
-	if nc.Meta.HasSession == false {
-		t.Fatal("nc.Meta.HasSession == false, expected true")
-	}
-	fmt.Println("")
-	for _, v := range c.Encoded.Bytes() {
-		fmt.Printf("%x ", v)
-	}
-}

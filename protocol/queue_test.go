@@ -25,13 +25,14 @@ package protocol
 import (
 	"bytes"
 	"testing"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestQueue(t *testing.T) {
 	var (
 		q   *Queue = NewQueue()
 		nq  *Queue = NewQueue()
-		p   *Packet
+		p   *packet.Packet
 		err error
 	)
 	// setup queue
@@ -47,7 +48,7 @@ func TestQueue(t *testing.T) {
 	}
 	// decode from serialized
 	// data.
-	p = q.GetPacket().(*Packet)
+	p = q.GetPacket().(*packet.Packet)
 	err = nq.DecodeFrom(p.Data)
 	if err != nil {
 		t.Fatal("expected err==nil")

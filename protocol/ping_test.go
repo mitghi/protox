@@ -25,6 +25,7 @@ package protocol
 import (
 	"fmt"
 	"testing"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestPing(t *testing.T) {
@@ -38,7 +39,7 @@ func TestPing(t *testing.T) {
 		fmt.Printf("'%#x' ", v)
 	}
 	b := conn.Encoded.Bytes()
-	p := conn.GetPacket().(*Packet)
+	p := conn.GetPacket().(*packet.Packet)
 	// header boundary
 	fmt.Println("content", b, p.Data, p.Code, p.Length)
 	fmt.Println("----------------")

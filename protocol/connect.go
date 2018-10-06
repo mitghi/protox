@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 // Connect is the initial connection packet. This packet is always
@@ -73,6 +74,9 @@ func NewConnect() *Connect {
 // this packet is always sent from a client to the broker. Note - this
 // might change in future versions.
 func (cn *Connect) Encode() (err error) {
+  // TODO:
+  // . process credentials in another
+  //   method.
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -81,34 +85,32 @@ func (cn *Connect) Encode() (err error) {
 		vh    bytes.Buffer
 		pl    bytes.Buffer
 		cmd   byte
-	)
+	)  
 	if cn.Password != "" {
 		flags |= 0x1
 	}
-	// if cn.ClientId != "" {
-	flags |= 0x2
-	// }
+  // client id
+	flags |= 0x2 
 	if cn.KeepAlive > 0 {
 		flags |= 0x4
 	}
 	if cn.Username != "" {
 		flags |= 0x8
 	}
+	/* d e b u g */  
 	// cmd = cn.Command | flags
 	// NOTE: TODO:
 	// . this has changed
 	// original
 	// cmd = cn.Command
 	// new
+	/* d e b u g */  
 	cmd = cn.Command
 	if cn.Meta.CleanStart {
 		var opts byte = 0x8 // clean-start bit
 		cmd |= opts
 	}
 	cn.Header.WriteByte(cmd)
-
-	// cn.Header.WriteByte(CCONNECT)
-
 	/* d e b u g - s t a r t*/
 	hasPassword := (flags & 0x1) != 0
 	hasClientId := (flags & 0x2) != 0
@@ -116,7 +118,6 @@ func (cn *Connect) Encode() (err error) {
 	hasUsername := (flags & 0x8) != 0
 	logger.FInfo("Encode", "* [Connection] --OPTIONS[keepalive, clid, clusrname, clpasswd]=(", hasKeepalive, hasClientId, hasUsername, hasPassword, ")--")
 	/* d e b u g -  e n d  */
-
 	vhProtocol := []byte(protobase.ProtoVersion)
 	SetString(string(vhProtocol), &vh)
 	SetUint8(flags, &vh)
@@ -143,13 +144,14 @@ func (cn *Connect) Encode() (err error) {
 	logger.FDebugf("Encode", "% x\n", cn.Header.Bytes())
 	cn.Header.Write(vh.Bytes())
 	cn.Encoded = cn.Header
+	/* d e b u g */  
 	// varHeader = append(varHeader, byte(vhLength & 0xff00 >> 8))
 	// varHeader = append(varHeader, byte(vhLength & 0x00ff))
 	// varHeader = append(varHeader, bstr...)
-
 	// EncodeLength(int32(len(varHeader)), cn.Header)
 	// cn.Header.Write(varHeader)
 	// cn.Header.Write(payload)
+	/* d e b u g */  
 	return err
 }
 
@@ -168,14 +170,14 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
+	/* d e b u g */
 	// lenLen := 1
 	// for buff[lenLen] & 0x80 != 0{
 	//   lenLen += 1
 	// }
+	/* d e b u g */  
 	headerBoundary := GetHeaderBoundary(buff)
 	packets := (*buff)[headerBoundary:]
-
 	/* d e b u g */
 	// TODO
 	// . parse the rest of options
@@ -185,7 +187,6 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 		cn.Meta.CleanStart = true
 	}
 	/* d e b u g */
-
 	buffreader := bytes.NewReader(packets)
 	packetRemaining := int32(len(packets))
 	versionStr := GetString(buffreader, &packetRemaining)
@@ -195,30 +196,24 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 	hasClientId := (flags & 0x2) != 0
 	hasKeepalive := (flags & 0x4) != 0
 	hasUsername := (flags & 0x8) != 0
-
 	logger.Debug("--OPTIONS[keepalive, clid, clusrname, clpasswd]=(", hasKeepalive, hasClientId, hasUsername, hasPassword, ")--")
-
 	// TODO: add new headers
 	if hasPassword {
 		password := GetString(buffreader, &packetRemaining)
 		cn.Password = password
 	}
-
 	if hasClientId {
 		clientId := GetString(buffreader, &packetRemaining)
 		cn.ClientId = clientId
 	}
-
 	if hasKeepalive {
 		keepAlive := GetUint16(buffreader, &packetRemaining)
 		cn.KeepAlive = int(keepAlive)
 	}
-
 	if hasUsername {
 		username := GetString(buffreader, &packetRemaining)
 		cn.Username = username
 	}
-
 	return err
 }
 
@@ -246,7 +241,7 @@ func (cn *Connect) GetPacket() protobase.PacketInterface {
 		data []byte  = cn.Encoded.Bytes()
 		dlen int     = len(data)
 		code byte    = cn.Command
-		pckt *Packet = NewPacket(&data, code, dlen)
+		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 
 	return pckt

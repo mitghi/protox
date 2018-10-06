@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 const (
@@ -112,7 +113,7 @@ func (qa *QAck) GetPacket() protobase.PacketInterface {
 		data []byte  = qa.Encoded.Bytes()
 		dlen int     = len(data)
 		code byte    = qa.Command
-		pckt *Packet = NewPacket(&data, code, dlen)
+		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 
 	return pckt
