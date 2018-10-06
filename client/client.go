@@ -33,9 +33,10 @@ import (
 * . remove `GetTopics` and `AddTopics` from Client
  */
 
+// Ensure protocol (interface) conformance.
 var _ protobase.ClientInterface = (*Client)(nil)
 
-//
+
 func NewClient(username string, password string, cid string) *Client {
 	client := &Client{
 		RWMutex:     &sync.RWMutex{},
@@ -45,31 +46,32 @@ func NewClient(username string, password string, cid string) *Client {
 		WillRetain:  "",
 		Username:    username,
 		Password:    password,
-		// Server: nil,
 	}
-	// client.Conn.SetClient(client)
 	return client
 }
 
-//
-func (self *Client) SetServer(server ServerInterface) {
-	self.Server = server
+
+func (c *Client) SetServer(server protobase.ServerInterface) {
+	c.Server = server
 }
 
-//
-func (self *Client) Connected(opts protobase.OptionInterface) bool {
+
+func (c *Client) Connected(opts protobase.OptionInterface) bool {
 	logger.Debug("+ [Client] Connected.")
-	// (*self.Server).NotifyConnected(self)
+  /* d e b u g */
+	// (*c.Server).NotifyConnected(c)
+  /* d e b u g */  
 	return true
 }
 
-//
-func (self *Client) Disconnected(opts protobase.OptCode) {
-	// (*self.Server).NotifyDisconnected(self)
+func (c *Client) Disconnected(opts protobase.OptCode) {
+  /* d e b u g */  
+	// (*c.Server).NotifyDisconnected(c)
+  /* d e b u g */  
 	logger.Debug("- [Client] Disconnected.")
 }
 
-func (self *Client) Publish(msg protobase.MsgInterface) {
+func (c *Client) Publish(msg protobase.MsgInterface) {
 	switch msg.Dir() {
 	case protobase.MDInbound:
 		logger.Debug("+ [Client] Marked to notify status.")
@@ -78,52 +80,54 @@ func (self *Client) Publish(msg protobase.MsgInterface) {
 	}
 }
 
-func (self *Client) Subscribe(msg protobase.MsgInterface) {
+func (c *Client) Subscribe(msg protobase.MsgInterface) {
 	topic := msg.Envelope().Route()
 	logger.Debug("+ [1][Client] Marked to receive updates.")
 	logger.Debugf("+ [1][Client] Mark has QoS(%d)", int(msg.QoS()))
-	// (*self.Server).NotifySubscribe(topic, self)
-	self.AddTopic(topic)
+  /* d e b u g */  
+	// (*c.Server).NotifySubscribe(topic, c)
+  /* d e b u g */  
+	c.AddTopic(topic)
 }
 
 //
-func (self *Client) GetTopics() []string {
-	return self.Topics
+func (c *Client) GetTopics() []string {
+	return c.Topics
 }
 
 //
-func (self *Client) AddTopic(topic string) {
+func (c *Client) AddTopic(topic string) {
 	// TODO
-	self.Topics = append(self.Topics, topic)
+	c.Topics = append(c.Topics, topic)
 }
 
 //
-func (self *Client) SetAuthMechanism() {
+func (c *Client) SetAuthMechanism() {
 	// TODO
 }
 
 //
-func (self *Client) GetIdentifier() string {
-	return self.Username
+func (c *Client) GetIdentifier() string {
+	return c.Username
 }
 
-func (self *Client) SetCreds(creds protobase.CredentialsInterface) {
-	self.creds = creds
+func (c *Client) SetCreds(creds protobase.CredentialsInterface) {
+	c.creds = creds
 }
 
-func (self *Client) GetCreds() protobase.CredentialsInterface {
-	return self.creds
+func (c *Client) GetCreds() protobase.CredentialsInterface {
+	return c.creds
 }
 
-func (self *Client) SetUser(user interface{}) {
-	self.User = user
+func (c *Client) SetUser(user interface{}) {
+	c.User = user
 }
 
-func (self *Client) GetUser() interface{} {
-	return self.User
+func (c *Client) GetUser() interface{} {
+	return c.User
 }
 
-func (self *Client) Setup() error {
+func (c *Client) Setup() error {
 	// TODO
 	logger.FDebug("Setup", "* [Client/Setup] invoked.")
 	return nil

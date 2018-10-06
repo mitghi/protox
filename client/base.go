@@ -29,9 +29,6 @@ import (
 	"github.com/mitghi/protox/protobase"
 )
 
-// TODO
-// . add state
-
 // logger is the logging facility
 var logger protobase.LoggingInterface
 
@@ -39,45 +36,12 @@ func init() {
 	logger = logging.NewLogger("Client")
 }
 
-// ClientErrorHandlerFunc is the callback for error handling.
-type ClientErrorHandlerFunc func(client *ClientBase)
+// ClientErrorHandlerFunc is error callback function.
+type ClientErrorHandlerFunc func(client *protobase.ClientInterface)
 
-// ClientBase is the base Client interface.
-type ClientBase interface {
-	Connected(protobase.OptionInterface) bool
-	Disconnected(protobase.OptCode)
-	Publish(protobase.MsgInterface)
-	Subscribe(protobase.MsgInterface)
-	GetIdentifier() string
-	GetTopics() []string
-	GetCreds() protobase.CredentialsInterface
-	SetCreds(protobase.CredentialsInterface)
-	SetUser(interface{})
-	GetUser() interface{}
-	// TODO: NOTE:
-	// . investigate addition of auth mechanism to Client struct
-	// SetAuthMechanism()
-}
-
-// ServerInterface is the interface containing
-// limited server methods for Client.
-type ServerInterface interface {
-	NotifyDisconnected(prc ProtoConnection)
-	NotifyConnected(prc ProtoConnection)
-	NotifySubscribe(msgbox protobase.MsgInterface, prc ProtoConnection)
-	NotifyPublish(msg protobase.MsgInterface, prc ProtoConnection)
-	RegisterClient(prc ProtoConnection)
-}
-
-// ProtoConnection is the interface containing
-// limited connection methods for Client.
-type ProtoConnection interface {
-	Handle()
-	SetServer(sv ServerInterface)
-}
-
-// Client is the structure for high-level and client-side
-// logics.
+// Client implements basic high-level 
+// functionality based on 
+// 'protobase.ClientInterface'.
 type Client struct {
 	*sync.RWMutex
 
@@ -89,9 +53,8 @@ type Client struct {
 	WillMessage string
 	WillQos     string
 	WillRetain  string
-	Server      ServerInterface
+	Server      protobase.ServerInterface
 	Topics      []string
-	// Conn        protocol.Connection
 	// TODO:
 	// . make a new interface for this client
 	// . add group and userRole and make the interface
@@ -99,4 +62,5 @@ type Client struct {
 	// e.g.:
 	// group       string
 	// userRole    protobase.PermissionInterface
+	// Conn        protocol.Connection  
 }

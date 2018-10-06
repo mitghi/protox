@@ -34,7 +34,7 @@ import (
 * simple user implementation
 **/
 
-// Interface check
+// Ensure protocol (interface) conformance.
 var _ protobase.CLBUserInterface = (*CLBUser)(nil)
 
 // Error messages
@@ -44,17 +44,22 @@ var (
 	CLBUserInvalid error = errors.New("CLBUser: invalid.")
 )
 
+// CLBUser implements client to broker connection.
+// It uses 'protobase.ClientInterface' as interface
+// responsible for high level interactions.
 type CLBUser struct {
+  // TODO:
+  // . check padding
 	sync.RWMutex
 
 	Conn       protobase.ProtoClientConnection
-	Cl         protobase.ClientInterface
+	Cl         protobase.ClientInterface // associated client
 	Storage    protobase.MessageBox
-	Exch       chan struct{}
-	exconnch   chan struct{}
+	Exch       chan struct{}             // exit channel
+	exconnch   chan struct{}             // connection exit channel
 	CFCallback func(*CLBUser)
 	Addr       string
-	SecMRS     int
+	SecMRS     int                   
 	MaxRetry   int
 	HeartBeat  int
 	hadSetup   bool
@@ -62,17 +67,22 @@ type CLBUser struct {
 	Connected  bool
 }
 
+// CLBOptions contains values for
+// setting up client-broker connection.
 type CLBOptions struct {
+  // TODO:
+  // . check padding
 	Addr            string
 	MaxRetry        int
 	HeartBeat       int
 	ClientDelegate  func() protobase.ClientInterface
 	StorageDelegate protobase.MessageBox
 	Conn            protobase.ProtoClientConnection
-	SecMRS          int // Seconds of Maximum Retry Sleep
 	CFCallback      func(*CLBUser)
+	SecMRS          int                      // maximum sleep duration
 }
 
+// checkOpts returns whether 'opts' is valid.
 func checkOpts(opts CLBOptions) bool {
 	if opts.Addr == "" {
 		return false
@@ -86,12 +96,16 @@ func checkOpts(opts CLBOptions) bool {
 	return true
 }
 
-func NewCLBUser(opts CLBOptions) (*CLBUser, bool) {
+// NewCLBUser validates 'opts' and constructs
+// a new 'CLBUser' and returns a pointer to it
+// with boolean value indicating validity of
+// 'opts'. NOTE: discard boolean iff valid pointer
+// is non-nil.
+func NewCLBUser(opts CLBOptions) (clbu *CLBUser, ok bool) {
 	if !checkOpts(opts) {
 		return nil, false
 	}
-
-	u := &CLBUser{
+	clbu = &CLBUser{
 		Exch:       make(chan struct{}, 1),
 		exconnch:   make(chan struct{}),
 		Running:    false,
@@ -105,10 +119,15 @@ func NewCLBUser(opts CLBOptions) (*CLBUser, bool) {
 		hadSetup:   false,
 		Connected:  false,
 	}
-
-	return u, true
+  ok = true  
+  return clbu, ok
 }
 
+// Setup performs initialization and
+// construction of available options
+// and its assignment to internal
+// struct variables. It returns
+// error when unsuccessful.
 func (u *CLBUser) Setup() error {
 	if u.Addr == "" {
 		return CLBUserInvalid
@@ -129,10 +148,11 @@ func (u *CLBUser) Setup() error {
 	// NOTE
 	// . check correctness
 	u.hadSetup = true
-
 	return nil
 }
 
+// IsRunning returns whether current
+// instance is active.
 func (u *CLBUser) IsRunning() (ret bool) {
 	u.RLock()
 	defer u.RUnlock()
@@ -140,6 +160,8 @@ func (u *CLBUser) IsRunning() (ret bool) {
 	return ret
 }
 
+// IsConnected returns whether instance
+// is connected.
 func (u *CLBUser) IsConnected() (ret bool) {
 	u.RLock()
 	defer u.RUnlock()
@@ -147,22 +169,30 @@ func (u *CLBUser) IsConnected() (ret bool) {
 	return ret
 }
 
+// GetExitCh returns exit channel.
 func (u *CLBUser) GetExitCh() chan struct{} {
 	return u.Exch
 }
 
+// SetConnected sets 'b' indicating
+// connection status.
 func (u *CLBUser) SetConnected(b bool) {
 	u.Lock()
 	u.Connected = b
 	u.Unlock()
 }
 
+// SetRunning sets running status to 'b'.
 func (u *CLBUser) SetRunning(b bool) {
 	u.Lock()
 	u.Running = b
 	u.Unlock()
 }
 
+// Disconnect terminates the connection of
+// the running instance and invokes
+// 'Disconnected' receiver method on the
+// associated client.
 func (u *CLBUser) Disconnect() {
 	// TODO
 	// . check for closed channel
@@ -179,6 +209,11 @@ func (u *CLBUser) Disconnect() {
 	}
 }
 
+// Connect establishes connection
+// to the destination and handles
+// reconnecting and retrying to
+// the root destination based on
+// setup options. 
 func (u *CLBUser) Connect() {
 	// TODO
 	// . return error code
@@ -208,7 +243,7 @@ func (u *CLBUser) Connect() {
 			// TODO
 			// . add maximum retry
 			for u.IsRunning() {
-				u.Conn.Handle()
+				u.Conn.Handle(nil)
 				time.Sleep(dur)
 				dur *= 2
 				if dur > maxslp {
