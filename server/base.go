@@ -31,7 +31,6 @@ package server
 */
 
 import (
-	"crypto/tls"
 	"errors"
 	"net"
 	"sync"
@@ -116,61 +115,27 @@ type ConnectionDelegate func(net.Conn) protobase.ProtoConnection
 // Server is a main implementation of `protocol.ServerInterface`.
 type Server struct {
 	sync.RWMutex
-	protobase.ServerInterface // explicitly implement interface
+	protobase.ServerInterface
 
-	Clients            map[net.Conn]protobase.ProtoConnection                 // section routing
-	Router             map[string]map[string]protobase.ProtoConnection        // end
-	onNewClient        func(string, string, string) protobase.ClientInterface //section delegates
+	Clients            map[net.Conn]protobase.ProtoConnection                 
+	Router             map[string]map[string]protobase.ProtoConnection        
+	onNewClient        func(string, string, string) protobase.ClientInterface 
 	onNewConnection    ConnectionDelegate
 	onNewMessage       ServerHandlerFunc
 	permissionDelegate func(protobase.AuthInterface, ...string) bool
 	Authenticator      protobase.AuthInterface
-	Store              protobase.MessageStorage                               // end
+	Store              protobase.MessageStorage                               
 	State              *serverState
 	rt                 *Router
-	listener           *net.Listener                                          //end
+	listener           *net.Listener                                          
 	buffer             *buffpool.BuffPool
 	opts               *ServerConfigs
-	corous             sync.WaitGroup                                         // coroutines
-	heartbeat          int                                                    // state section
+	corous             sync.WaitGroup                                         
+	heartbeat          int                                                    
   Status             uint32
   StatusChan         chan uint32
-	critical           chan struct{} // end. Critical/Fatal error
+	critical           chan struct{}
 	// TODO: NOTE:
 	//  . add timestamp and expiration date.
 	//  . for heartbeat, uint can also be used.
-}
-
-// UNIXSOPtions contains necessary information required by unix socket server.
-type UNIXSOptions struct {
-	// TODO
-}
-
-// TCPOptions contains necessarry information required by TCP server.
-type TCPOptions struct {
-	// TODO
-}
-
-// TLSOptions contains neccessary information required by TLS server.
-type TLSOptions struct {
-	Curves           []tls.CurveID
-	Ciphers          []uint16
-	Cert             string
-	Key              string
-	Ca               string
-	HandshakeTimeout int
-	ShouldVerify     bool
-}
-
-// ServerConfigs is a struct for configuring the server.
-type ServerConfigs struct {
-	Config interface{}
-	Addr   string
-	Mode   byte
-	Type   byte
-	// TRate is the cycle interval in milliseconds 
-	// for performing status check.
-	TRate int
-	// TODO
-	// . add callbacks
 }
