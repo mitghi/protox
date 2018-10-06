@@ -64,11 +64,11 @@ import (
 	"time"
 
 	"github.com/mitghi/protox/auth"
+	"github.com/mitghi/protox/server"	
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/messages"
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol"
-	"github.com/mitghi/protox/server"
+	"github.com/mitghi/protox/networking"
 )
 
 // ADDR is the server address.
@@ -132,8 +132,8 @@ func createDummyCredentials() {
 }
 
 // ClientDelegate creates a new handler for each new client and returns a structure
-// compatible with `protocol.ClientInterface`. Most of high-level business logic should
-// be implemented by customizing/providing a compatible `protocol.ClientInterface` structure.
+// compatible with `protobase.ClientInterface`. Most of high-level business logic should
+// be implemented by customizing/providing a compatible `protobase.ClientInterface` structure.
 // Protocol notifications such as Subscribe, Publish, Disconnect, Presence, Request, Broadcast
 // and Proposals are delivered by calling delegate routines on the structure returned by this function.
 // It will reuse the memory if a client struct is already in the storage, otherwise it allocate and
@@ -152,7 +152,7 @@ func clientDelegate(username string, password string, cid string) protobase.Clie
 // ConnectionDeleagte creates a new connection for each new client
 // and returns a compatible structure with `protocol.ProtoConnection` interface.
 func connectionDelegate(cl net.Conn) protobase.ProtoConnection {
-	var proto *protocol.Connection = protocol.NewConnection(cl)
+	var proto *networking.Connection = networking.NewConnection(cl)
 	return proto
 }
 
