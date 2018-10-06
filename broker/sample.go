@@ -27,7 +27,7 @@ import (
 
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol"
+	"github.com/mitghi/protox/networking"
 )
 
 func NewClientStore() *ClientStore {
@@ -74,6 +74,6 @@ func (self *Broker) clientDelegate(username string, password string, cid string)
 // ConnectionDeleagte creates a new connection for each new client
 // and returns a compatible structure with `protocol.ProtoConnection` interface.
 func (self *Broker) connectionDelegate(cl net.Conn) protobase.ProtoConnection {
-	var proto *protocol.Connection = protocol.NewConnection(cl)
+	var proto *networking.Connection = networking.NewConnection(cl)
 	return proto
 }

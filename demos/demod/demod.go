@@ -35,8 +35,8 @@ import (
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/messages"
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol"
 	"github.com/mitghi/protox/server"
+	"github.com/mitghi/protox/networking"
 )
 
 // ADDR is the server address.
@@ -120,7 +120,7 @@ func clientDelegate(username string, password string, cid string) protobase.Clie
 // ConnectionDeleagte creates a new connection for each new client
 // and returns a compatible structure with `protocol.ProtoConnection` interface.
 func connectionDelegate(cl net.Conn) protobase.ProtoConnection {
-	var proto *protocol.Connection = protocol.NewConnection(cl)
+	var proto *networking.Connection = networking.NewConnection(cl)
 	return proto
 }
 
