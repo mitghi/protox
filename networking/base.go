@@ -20,4 +20,51 @@
 * SOFTWARE.
 */
 
+// package networking provides protox connection facilities.
 package networking
+
+import (
+  "github.com/mitghi/protox/protocol/packet"
+	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/logging"
+)
+
+// Log is central logger
+var logger protobase.LoggingInterface
+
+// Init is package level initializer.
+func init() {
+	logger = logging.NewLogger("Networking")
+}
+
+// Authorization status codes
+const (
+	RESULTFAIL = 0x01
+	RESULTERR  = 0x02
+	RESULTNOP  = 0x03
+	RESULTOK   = 0x04
+)
+
+// Connection status codes
+const (
+	STATDISCONNECT   uint32 = 1
+	STATCONNECTING   uint32 = 2
+	STATONLINE       uint32 = 3
+	STATDISCONNECTED uint32 = 4
+	STATERR          uint32 = 5
+	STATFATAL        uint32 = 6
+	STATGODOWN       uint32 = 7
+)
+
+// Connection response codes
+const (
+	TMP_RESPOK = 0x10 // TODO: change this later
+	RESNON     = 0x00 // no response code is set yet
+	RESPFAIL   = 0x01
+	RESPOK     = 0x02
+	RESPNOK    = 0x03
+	RESPERR    = 0x04
+)
+
+// Packet is alias type for 'packet.Packet'
+type Packet = packet.Packet
