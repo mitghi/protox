@@ -1,4 +1,4 @@
 #!/bin/bash
 
-go build .
-
+all:
+	go build .
