@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -42,31 +42,31 @@ type COnline struct {
 // interactions with a connected/authorized client happens.
 func NewCOnline(conn *CLBConnection) *COnline {
 	var (
-    co *COnline = &COnline{
-		constate: constate{
-			constatebase: constatebase{
-				Conn: conn,
+		co *COnline = &COnline{
+			constate: constate{
+				constatebase: constatebase{
+					Conn: conn,
+				},
+				client: nil,
+				server: nil,
 			},
-			client: nil,
-			server: nil,
-		},
-		Conn: conn,
-    }
-  )
+			Conn: conn,
+		}
+	)
 	co.client = conn.GetClient()
 	return co
 }
 
 // HandleDefault is the default handler ( stub for COnline ).
 func (co *COnline) HandleDefault(packet protobase.PacketInterface) (status bool) {
-  // NOP
+	// NOP
 	return true
 }
 
 // onCONNECT is not valid in this stage.
 func (co *COnline) OnCONNECT(packet protobase.PacketInterface) {
-  // violates client/server policy
-  // terminate
+	// violates client/server policy
+	// terminate
 	co.Shutdown()
 	co.Conn.protocon.Conn.Close()
 }
@@ -74,8 +74,8 @@ func (co *COnline) OnCONNECT(packet protobase.PacketInterface) {
 // onCONNACK is not valid in this stage.
 func (co *COnline) OnCONNACK(packet protobase.PacketInterface) {
 	// TODO
-  const fn string = "onCONNACK"
-  logger.FWarn(fn, "-* [COnline] this routine is unimplemented.")
+	const fn string = "onCONNACK"
+	logger.FWarn(fn, "-* [COnline] this routine is unimplemented.")
 }
 
 // onPUBLISH is the handler for `Publish` packets.
@@ -111,7 +111,7 @@ func (co *COnline) OnPUBLISH(packet protobase.PacketInterface) {
 	pb := protocol.NewMsgBox(publish.Meta.Qos, publish.Meta.MessageId, protobase.MDInbound, protocol.NewMsgEnvelope(publish.Topic, publish.Message))
 	// publish box clone
 	pbc := pb.Clone(protobase.MDInbound)
-  /* d e b u g */
+	/* d e b u g */
 	// NOTE
 	// . this has changed
 	// if publish.Meta.Qos > 0 {
@@ -142,14 +142,14 @@ func (co *COnline) OnPUBLISH(packet protobase.PacketInterface) {
 	// TODO
 	// . send this to a worker thread
 	// go func() { co.client.Publish(pbc) }()
-  /* d e b u g */  
+	/* d e b u g */
 	co.client.Publish(pbc)
 }
 
 // onSUBSCRIBE is the handler for `Subscribe` packets.
 func (co *COnline) OnSUBSCRIBE(packet protobase.PacketInterface) {
 	logger.Debug("* [Subscribe] packet is received.")
-  /* d e b u g */
+	/* d e b u g */
 	// subscribe := NewSubscribe()
 	// if err := subscribe.DecodeFrom(packet.Data); err != nil {
 	// 	co.Shutdown()
@@ -160,7 +160,7 @@ func (co *COnline) OnSUBSCRIBE(packet protobase.PacketInterface) {
 	// co.server.NotifySubscribe(co.Conn, pb)
 	// co.client.Subscribe(subscribe.Topic)
 	// co.server.NotifySubscribe(subscribe.Topic, co.Conn)
-  /* d e b u g */  
+	/* d e b u g */
 }
 
 // onPING is the heartbeat handler ( other packets reset its timer as well ).
@@ -207,14 +207,14 @@ func (co *COnline) OnSUBACK(packet protobase.PacketInterface) {
 
 	pb := protocol.NewMsgBox(npc.Meta.Qos, npc.Meta.MessageId, protobase.MDInbound, protocol.NewMsgEnvelope(npc.Topic, nil))
 	pbc := pb.Clone(protobase.MDInbound)
-  /* critical section */
+	/* critical section */
 	co.Conn.clblock.Lock()
 	callback, ok := co.Conn.clbsub[msgid]
 	if ok {
 		delete(co.Conn.clbsub, msgid)
 	}
 	co.Conn.clblock.Unlock()
-  /* critical section - end */  
+	/* critical section - end */
 	if ok && callback != nil {
 		callback(nil, pbc)
 		co.client.Subscribe(pbc)
@@ -257,14 +257,14 @@ func (co *COnline) OnPUBACK(packet protobase.PacketInterface) {
 		logger.FWarn("onPUBACK", "- [MessageBox/Puback] npc==nil [FATAL].")
 	}
 	pb := protocol.NewMsgBox(npc.Meta.Qos, npc.Meta.MessageId, protobase.MDInbound, protocol.NewMsgEnvelope(npc.Topic, npc.Message))
-  /* critical section */  
+	/* critical section */
 	co.Conn.clblock.Lock()
 	callback, ok := co.Conn.clbpub[msgid]
 	if ok {
 		delete(co.Conn.clbpub, msgid)
 	}
 	co.Conn.clblock.Unlock()
-  /* critical section - end */
+	/* critical section - end */
 	if ok && callback != nil {
 		callback(nil, pb)
 		return
@@ -282,21 +282,20 @@ func (co *COnline) OnPONG(packet protobase.PacketInterface) {
 	logger.FDebug("onPONG", "* [Pong] packet received.")
 }
 
-
 func (co *COnline) OnQueue(packet protobase.PacketInterface) {
-  const fn string = "OnQueue"
+	const fn string = "OnQueue"
 	logger.FDebug(fn, "+ [Queue] packet is received.")
 }
 
 func (co *COnline) OnQueueAck(packet protobase.PacketInterface) {
-  const fn string = "OnQueueAck"
+	const fn string = "OnQueueAck"
 	logger.FDebug(fn, "+ [Queue(Ack)] packet is received.")
 }
 
 // Shutdown sets the status to error which notifies the supervisor
 // and cleanly terminates the connection.
 func (co *COnline) Shutdown() {
-  const fn string = "Shutdown"
+	const fn string = "Shutdown"
 	logger.FDebug(fn, "* [Genesis] closing.")
 	atomic.StoreUint32(&(co.Conn).Status, STATERR)
 }

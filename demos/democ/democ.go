@@ -18,18 +18,18 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package main
 
 import (
 	"os"
 
+	"fmt"
 	"github.com/mitghi/protox/auth"
 	"github.com/mitghi/protox/broker"
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/protobase"
-	"fmt"
 )
 
 // clientDelegate is the delegate used by server to
@@ -53,18 +53,18 @@ func defaultAuthConfig() *auth.AuthConfig {
 		Members: map[string][][3]string{
 			"User": [][3]string{
 				{"can", "publish", "self/inbox"},
-        {"can", "publish", "a/simple/demo"},
+				{"can", "publish", "a/simple/demo"},
 				{"can", "subscribe", "self/notifications"},
 			},
 			"Bot": [][3]string{
 				{"can", "publish", "self/location"},
 				{"can", "request", "self/access/upgrade"},
 				{"can", "subscribe", "a/simple/demo"},
-        {"can", "publish", "a/simple/demo"},
+				{"can", "publish", "a/simple/demo"},
 			},
-      "Reader": [][3]string{
-        {"can", "subscribe", "a/simple/demo"},
-      },
+			"Reader": [][3]string{
+				{"can", "subscribe", "a/simple/demo"},
+			},
 		},
 		// set access control list authorization
 		// type.
@@ -121,7 +121,7 @@ func defaultAuthConfig() *auth.AuthConfig {
 			},
 			// define permission partition
 			Group: "Reader",
-		},    
+		},
 	}
 
 	return c
@@ -147,7 +147,7 @@ func main() {
 	// run the broker
 	ok := brk.Start()
 	if !ok {
-    fmt.Println("[-] unable to start.")
+		fmt.Println("[-] unable to start.")
 		os.Exit(1)
 	}
 	// wait for termination conditions such

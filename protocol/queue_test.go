@@ -18,14 +18,14 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protocol
 
 import (
 	"bytes"
-	"testing"
 	"github.com/mitghi/protox/protocol/packet"
+	"testing"
 )
 
 func TestQueue(t *testing.T) {

@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package client
 
@@ -48,18 +48,18 @@ var (
 // It uses 'protobase.ClientInterface' as interface
 // responsible for high level interactions.
 type CLBUser struct {
-  // TODO:
-  // . check padding
+	// TODO:
+	// . check padding
 	sync.RWMutex
 
 	Conn       protobase.ProtoClientConnection
 	Cl         protobase.ClientInterface // associated client
 	Storage    protobase.MessageBox
-	Exch       chan struct{}             // exit channel
-	exconnch   chan struct{}             // connection exit channel
+	Exch       chan struct{} // exit channel
+	exconnch   chan struct{} // connection exit channel
 	CFCallback func(*CLBUser)
 	Addr       string
-	SecMRS     int                   
+	SecMRS     int
 	MaxRetry   int
 	HeartBeat  int
 	hadSetup   bool
@@ -70,8 +70,8 @@ type CLBUser struct {
 // CLBOptions contains values for
 // setting up client-broker connection.
 type CLBOptions struct {
-  // TODO:
-  // . check padding
+	// TODO:
+	// . check padding
 	Addr            string
 	MaxRetry        int
 	HeartBeat       int
@@ -79,7 +79,7 @@ type CLBOptions struct {
 	StorageDelegate protobase.MessageBox
 	Conn            protobase.ProtoClientConnection
 	CFCallback      func(*CLBUser)
-	SecMRS          int                      // maximum sleep duration
+	SecMRS          int // maximum sleep duration
 }
 
 // checkOpts returns whether 'opts' is valid.
@@ -119,8 +119,8 @@ func NewCLBUser(opts CLBOptions) (clbu *CLBUser, ok bool) {
 		hadSetup:   false,
 		Connected:  false,
 	}
-  ok = true  
-  return clbu, ok
+	ok = true
+	return clbu, ok
 }
 
 // Setup performs initialization and
@@ -213,7 +213,7 @@ func (u *CLBUser) Disconnect() {
 // to the destination and handles
 // reconnecting and retrying to
 // the root destination based on
-// setup options. 
+// setup options.
 func (u *CLBUser) Connect() {
 	// TODO
 	// . return error code

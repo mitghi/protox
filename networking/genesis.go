@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -31,7 +31,7 @@ import (
 
 // Genesis is the initial and most important stage.
 // All new connections can connect to broker iff
-// they pass this stage. This stage only accepts 
+// they pass this stage. This stage only accepts
 // `Connect` packets. Any other control packet results
 // in immediate termination ( it can be adjusted using
 // policies.
@@ -121,7 +121,7 @@ func (g *Genesis) HandleDefault(packet protobase.PacketInterface) (status bool) 
 	}
 	logger.FDebug("HandleDefault", "* [Packet] connection packet content.", p.String())
 	// connection is established
-  // push into the next state
+	// push into the next state
 	g.gotFirstPacket = true
 	// TODO:
 	// . improve by directly pass connect packet to auth subsystem
@@ -151,10 +151,10 @@ func (g *Genesis) HandleDefault(packet protobase.PacketInterface) (status bool) 
 		// TODO
 		//  these lines are moves to cleanUp, remove them when
 		//  its finalized.
-    /* d e b u g */
+		/* d e b u g */
 		//  g.Conn = nil
 		//  g.client = nil
-    /* d e b u g */    
+		/* d e b u g */
 		g.cleanUp()
 		return true
 	} else {

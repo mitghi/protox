@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -30,10 +30,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mitghi/timer"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
 	"github.com/mitghi/protox/protocol/packet"
+	"github.com/mitghi/timer"
 )
 
 // ensure interface (protocol) conformance.
@@ -42,15 +42,15 @@ var _ protobase.ProtoConnection = (*Connection)(nil)
 // ErrorHandler is `ClientInterface` error handler signature.
 type ErrorHandler func(client *protobase.ClientInterface)
 
-// Connection is high level manager acting as 
+// Connection is high level manager acting as
 // hub connecting subsystems and utilizing them
 // to form meaningful procedures and performing
-// meaningful operations manifesting itself as 
+// meaningful operations manifesting itself as
 // basic protox system.
 type Connection struct {
 	// TODO
 	// . refactor permissionDelegate via PermissionInterface
-	// . check alignment  
+	// . check alignment
 	protocon
 
 	ErrorHandler       func(client *protobase.ClientInterface)
@@ -65,46 +65,46 @@ type Connection struct {
 	connTimeout        int                                                    // connection timeout (initial)
 	heartbeat          int                                                    // maximum idle time
 	unclean            uint32                                                 // status flag
-	justStarted        bool                                                   // status flag    
+	justStarted        bool                                                   // status flag
 }
 
-// NewConnection allocates and initializes a new 
+// NewConnection allocates and initializes a new
 // `Connection` struct from supplied `net.Conn`
-// without performing health checks and returns 
+// without performing health checks and returns
 // its pointer. It sets the state to `Genseis`
 // procedure responsible for handling new
 // network connections.
 func NewConnection(conn net.Conn) *Connection {
 	// TODO
 	// . remove hardcoded values
-  // . add methods to set `connTimeout` 
+	// . add methods to set `connTimeout`
 	//   and `heartbeat`.
 	var (
-    c *Connection = &Connection{
-      protocon: protocon{
-        Conn:            conn,
-        Reader:          bufio.NewReader(conn),
-        Writer:          bufio.NewWriter(conn),
-        corous:          sync.WaitGroup{},
-        ErrChan:         nil,
-        ShouldTerminate: nil,
-        SendChan:        nil,
-        Status:          STATDISCONNECT,
-      },
-      //initials
-      justStarted:        true, // initial connection timeout is on
-      connTimeout:        1,    // 1 second
-      heartbeat:          1,    // 1 second ping interval
-      ErrorHandler:       nil,
-      State:              nil,
-      client:             nil,
-      server:             nil,
-      auth:               nil,
-      clientDelegate:     nil,
-      permissionDelegate: nil,
-    }
-  )
-  // set the connection state
+		c *Connection = &Connection{
+			protocon: protocon{
+				Conn:            conn,
+				Reader:          bufio.NewReader(conn),
+				Writer:          bufio.NewWriter(conn),
+				corous:          sync.WaitGroup{},
+				ErrChan:         nil,
+				ShouldTerminate: nil,
+				SendChan:        nil,
+				Status:          STATDISCONNECT,
+			},
+			//initials
+			justStarted:        true, // initial connection timeout is on
+			connTimeout:        1,    // 1 second
+			heartbeat:          1,    // 1 second ping interval
+			ErrorHandler:       nil,
+			State:              nil,
+			client:             nil,
+			server:             nil,
+			auth:               nil,
+			clientDelegate:     nil,
+			permissionDelegate: nil,
+		}
+	)
+	// set the connection state
 	c.State = NewGenesis(c)
 	return c
 }
@@ -134,15 +134,15 @@ func (c *Connection) SetInitiateTimeout(timeout int) {
 	c.connTimeout = timeout
 }
 
-// SetHeartBeat sets the internal timer to maximum idle time which not 
-// receiving from a client will not results in connection termination. 
+// SetHeartBeat sets the internal timer to maximum idle time which not
+// receiving from a client will not results in connection termination.
 // It is the responsibility of the client to keep up and send `Ping`
 // packets to restart this timer.
 func (c *Connection) SetHeartBeat(heartbeat int) {
 	c.heartbeat = heartbeat
 }
 
-// SetClient sets the internal active client to `cl` argument. It is 
+// SetClient sets the internal active client to `cl` argument. It is
 // used for callbacks and notifications.
 func (c *Connection) SetClient(cl protobase.ClientInterface) {
 	c.client = cl
@@ -276,7 +276,7 @@ func (c *Connection) GetAuthenticator() protobase.AuthInterface {
 	return c.auth
 }
 
-// HandleDefault is to satisfy interface requirements. It is 
+// HandleDefault is to satisfy interface requirements. It is
 // stub routine.
 func (c *Connection) HandleDefault(apckt protobase.PacketInterface) {
 }
@@ -372,7 +372,7 @@ ML:
 	logger.Debug("* [MLHEAD]**(%s) beginning to wait for coroutines to finish**", c.client.GetIdentifier())
 	atomic.StoreUint32(&c.Status, STATDISCONNECTED)
 	c.server.NotifyDisconnected(c) // TODO: this should be done either in client or state
-	c.corous.Wait()                   // Wait for all coroutines to finish before cleaning up
+	c.corous.Wait()                // Wait for all coroutines to finish before cleaning up
 	atomic.StoreUint32(&c.Status, STATDISCONNECT)
 	logger.Debugf("+ [MLEND]++(%s) all coroutines are finished, exiting conn++", c.client.GetIdentifier())
 }
@@ -415,9 +415,9 @@ func (c *Connection) receive() (result *[]byte, code byte, length int, err error
 // Precheck validate packets to avoid abnormalities and malformed packet.
 // It returns a bool indicating wether a control packet is valid or not.
 func (c *Connection) precheck(cmd *byte) bool {
-  var (
-    msg byte = *cmd
-  )
+	var (
+		msg byte = *cmd
+	)
 	if c.justStarted == true {
 		// dirty check for connect packet
 		// reject any other packet in this stage
@@ -431,10 +431,10 @@ func (c *Connection) precheck(cmd *byte) bool {
 
 // SendHandler reads from send channel and writes to a socket.
 func (c *Connection) sendHandler() {
-  // TODO
-  // . check QoS
-  // . error handler function    
-  const fn string = "sendHandler"
+	// TODO
+	// . check QoS
+	// . error handler function
+	const fn string = "sendHandler"
 	for packet := range c.SendChan {
 		err := c.send(packet)
 		if err != nil {
@@ -442,7 +442,7 @@ func (c *Connection) sendHandler() {
 			break
 		}
 	}
-  logger.FInfo(fn, "+ [Connection] signaling done to work group.")
+	logger.FInfo(fn, "+ [Connection] signaling done to work group.")
 	c.corous.Done()
 }
 
@@ -456,14 +456,14 @@ func (c *Connection) prioSendHandler() {
 			break
 		}
 	}
-  logger.FInfo(fn, "+ [Connection] signaling done to work group.")  
+	logger.FInfo(fn, "+ [Connection] signaling done to work group.")
 	c.corous.Done()
 }
 
 // recvHandler is the main receive handler.
 func (c *Connection) recvHandler() {
-  // TODO
-  // . error handler function
+	// TODO
+	// . error handler function
 	const fn string = "recvHandler"
 	for {
 		packet, err := c.Receive()
@@ -474,7 +474,7 @@ func (c *Connection) recvHandler() {
 		c.RecvChan <- packet
 
 	}
-  logger.FInfo(fn, "+ [Connection] signaling done to work group.")    
+	logger.FInfo(fn, "+ [Connection] signaling done to work group.")
 	c.corous.Done()
 }
 
@@ -495,7 +495,7 @@ func (c *Connection) terminate() {
 		return
 	}
 	c.Shutdown()
-  /* critical section */
+	/* critical section */
 	c.SendLock.Lock()
 	if c.PrioSendChan != nil {
 		close(c.PrioSendChan)
@@ -506,15 +506,15 @@ func (c *Connection) terminate() {
 	c.PrioSendChan = nil
 	c.SendChan = nil
 	c.SendLock.Unlock()
-  /* critical section - end */  
+	/* critical section - end */
 }
 
 // dispatch dispatches the packet to its responsible handler.
 func (c *Connection) dispatch(packet protobase.PacketInterface) {
-  // TODO:
-  // . add handler for remaining PDUs
-  // . dispatch via lookup table
-  const fn string = "dispatch"
+	// TODO:
+	// . add handler for remaining PDUs
+	// . dispatch via lookup table
+	const fn string = "dispatch"
 	switch packet.GetCode() {
 	case protocol.PCONNECT:
 		c.State.OnCONNECT(packet)

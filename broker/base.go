@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 // package broker provides Message broker implementation.
 package broker
@@ -71,14 +71,14 @@ type ClientStore struct {
 
 // Options holds configuration detail.
 type Options struct {
-	HeartBeat           int
-	Auth                protobase.AuthInterface
-	MsgStore            protobase.MessageStorage
-	ClientStore         protobase.CLStoreInterface
-	ClientDelegate      server.ClientDelegate
-	ConnectionDelegate  server.ConnectionDelegate
-  ShutdownDeadline    time.Duration
-  Exit                chan struct{}
+	HeartBeat          int
+	Auth               protobase.AuthInterface
+	MsgStore           protobase.MessageStorage
+	ClientStore        protobase.CLStoreInterface
+	ClientDelegate     server.ClientDelegate
+	ConnectionDelegate server.ConnectionDelegate
+	ShutdownDeadline   time.Duration
+	Exit               chan struct{}
 }
 
 // TODO
@@ -97,10 +97,10 @@ type stats struct {
 
 // Broker implements a message broker.
 type Broker struct {
-	wg          sync.WaitGroup 
+	wg          sync.WaitGroup
 	server      *server.Server             // serving subsystem
 	authsys     protobase.AuthInterface    // authentication subsystem
-	msgstore    protobase.MessageStorage   // storage holding message data and metadata 
+	msgstore    protobase.MessageStorage   // storage holding message data and metadata
 	clientstore protobase.CLStoreInterface // storage holding client data
 	start       time.Time                  // startup delay
 	shwddln     time.Duration              // maximum tolerable time for shutdown procedure
@@ -109,7 +109,7 @@ type Broker struct {
 	firstRun    uint32                     // initial startup flag
 	running     uint32                     // running status flag
 	stopping    uint32                     // stopping procedure flag
-	exitch      <-chan struct{}            // exit channel 
+	exitch      <-chan struct{}            // exit channel
 	sigch       chan os.Signal
 	E           chan struct{}
 }

@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package auth
 
@@ -321,7 +321,7 @@ func (self *Authentication) SetMode(mode protobase.AuthMode) {
 
 // GetMode is a getter for authentication mode.
 func (self *Authentication) GetMode() protobase.AuthMode {
-  return self.mode
+	return self.mode
 }
 
 // GetACL returns internal ACL subsystem. It is important to

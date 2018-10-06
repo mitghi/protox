@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -110,8 +110,8 @@ func (o *Online) OnPUBLISH(packet protobase.PacketInterface) {
 			o.Shutdown()
 			return
 		}
-    // TDOO
-    // . refactor hard-coded permissions
+		// TDOO
+		// . refactor hard-coded permissions
 		if !role.HasPerm("can", "publish", publish.Topic) {
 			logger.Debugf("onPUBLISH", "- [Packet] unable to find corresponding permission ( direct ) for Client(%s).", cid)
 			o.Shutdown()
@@ -164,25 +164,25 @@ func (o *Online) OnSUBSCRIBE(packet protobase.PacketInterface) {
 		o.Shutdown()
 		return
 	}
-  if o.Conn.auth.GetMode() != protobase.AUTHModeNone {
-    if o.Conn.permissionDelegate != nil {
-      if !o.Conn.permissionDelegate(o.Conn.auth, "can", "subscribe", subscribe.Topic) {
-        o.Shutdown()
-        return
-      }
-    } else {    
-      role := o.Conn.auth.GetACL().GetRole((string)(userType))
-      if role == nil {
-        logger.Debug("onSUBSCRIBE", "- [Role] role==nil.")
-        o.Shutdown()
-        return
-      }
-      if !role.HasPerm("can", "subscribe", subscribe.Topic) {
-        o.Shutdown()
-        return
-      }
-    }
-  }
+	if o.Conn.auth.GetMode() != protobase.AUTHModeNone {
+		if o.Conn.permissionDelegate != nil {
+			if !o.Conn.permissionDelegate(o.Conn.auth, "can", "subscribe", subscribe.Topic) {
+				o.Shutdown()
+				return
+			}
+		} else {
+			role := o.Conn.auth.GetACL().GetRole((string)(userType))
+			if role == nil {
+				logger.Debug("onSUBSCRIBE", "- [Role] role==nil.")
+				o.Shutdown()
+				return
+			}
+			if !role.HasPerm("can", "subscribe", subscribe.Topic) {
+				o.Shutdown()
+				return
+			}
+		}
+	}
 	if stat := o.Conn.storage.AddInbound(cid, subscribe); stat == false {
 		logger.Debug("? [NOTICE] addinbound returned false (online/subscribe).")
 	}

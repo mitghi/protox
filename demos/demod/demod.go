@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package main
 
@@ -34,9 +34,9 @@ import (
 	"github.com/mitghi/protox/auth"
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/messages"
+	"github.com/mitghi/protox/networking"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/server"
-	"github.com/mitghi/protox/networking"
 )
 
 // ADDR is the server address.

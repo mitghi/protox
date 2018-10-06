@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package client
 
@@ -39,8 +39,8 @@ func init() {
 // ClientErrorHandlerFunc is error callback function.
 type ClientErrorHandlerFunc func(client *protobase.ClientInterface)
 
-// Client implements basic high-level 
-// functionality based on 
+// Client implements basic high-level
+// functionality based on
 // 'protobase.ClientInterface'.
 type Client struct {
 	*sync.RWMutex
@@ -62,5 +62,5 @@ type Client struct {
 	// e.g.:
 	// group       string
 	// userRole    protobase.PermissionInterface
-	// Conn        protocol.Connection  
+	// Conn        protocol.Connection
 }

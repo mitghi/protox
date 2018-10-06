@@ -11,9 +11,9 @@ import (
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/messages"
-	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/networking"
-//	"github.com/pkg/profile"
+	"github.com/mitghi/protox/protobase"
+	//	"github.com/pkg/profile"
 )
 
 var (
@@ -36,7 +36,7 @@ func pcallback(opts protobase.OptionInterface, msg protobase.MsgInterface) {
 }
 
 func main() {
-//	defer profile.Start(profile.CPUProfile).Stop()
+	//	defer profile.Start(profile.CPUProfile).Stop()
 	log.Println("[+] started")
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL)

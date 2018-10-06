@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protocol
 
@@ -31,7 +31,7 @@ func TestConnect(t *testing.T) {
 	conn := NewConnect()
 	conn.Username = "test"
 	conn.Password = "$2a$06$lNi8H5kc5Z9T9xJAXwQqyunl2EYhGUi6ct3TgpR1BNb1vpzpp9pzC"
-  conn.KeepAlive = 1
+	conn.KeepAlive = 1
 	err := conn.Encode()
 	if err != nil {
 		t.Fatal("err!=nil", err)

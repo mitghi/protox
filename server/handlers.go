@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package server
 
@@ -41,20 +41,20 @@ func (s *Server) ServeTCP(address string) (err error) {
 	server, err = net.Listen("tcp", address)
 	if err != nil {
 		logger.Debug("- [Fatal] Cannot listen for incomming connections.")
-    s.StatusChan <- protobase.ServerStopped
-    _ = s.SetStatus(protobase.ServerStopped)    
+		s.StatusChan <- protobase.ServerStopped
+		_ = s.SetStatus(protobase.ServerStopped)
 		return err
 	}
 	defer server.Close()
 	s.listener = &server
-  s.StatusChan <- protobase.ServerRunning
-	_ = s.SetStatus(protobase.ServerRunning)  
+	s.StatusChan <- protobase.ServerRunning
+	_ = s.SetStatus(protobase.ServerRunning)
 	ticker = time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 	defer s.SetStatus(protobase.ServerStopped)
-  /* d e b u g */
+	/* d e b u g */
 	// defer s.corous.Done()
-  /* d e b u g */  
+	/* d e b u g */
 	go func() {
 		for _ = range ticker.C {
 			if stat := s.GetStatus(); stat == protobase.ForceShutdown {
@@ -63,9 +63,9 @@ func (s *Server) ServeTCP(address string) (err error) {
 				}
 				logger.FDebug(fn, "* [Coro] waiting for coroutines ....")
 				break
-        /* d e b u g */        
+				/* d e b u g */
 				// s.corous.Wait()
-        /* d e b u g */        
+				/* d e b u g */
 			}
 		}
 	}()
@@ -76,18 +76,18 @@ ML:
 		)
 		conn, err = server.Accept()
 		if err != nil {
-      /* d e b u g */      
+			/* d e b u g */
 			// Wait for all corous to finish
 			// s.corous.Wait()
-      /* d e b u g */      
+			/* d e b u g */
 			logger.FDebug(fn, "* [Coro] Returning from TcpListener", "error")
 			logger.FDebug(fn, "* [Coro] finished \t\t finished. ")
 			logger.FDebug(fn, "* [Coro] {{ breaking ML }}")
-      /* d e b u g */      
+			/* d e b u g */
 			// tell other side of chan because shit hit the fan!
 			// s.critical <- struct{}{}
 			// return err
-      /* d e b u g */      
+			/* d e b u g */
 			break ML
 		}
 		logger.FInfo(fn, "* [Genesis] Participation request accepted.")

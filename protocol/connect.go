@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protocol
 
@@ -74,9 +74,9 @@ func NewConnect() *Connect {
 // this packet is always sent from a client to the broker. Note - this
 // might change in future versions.
 func (cn *Connect) Encode() (err error) {
-  // TODO:
-  // . process credentials in another
-  //   method.
+	// TODO:
+	// . process credentials in another
+	//   method.
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -85,26 +85,26 @@ func (cn *Connect) Encode() (err error) {
 		vh    bytes.Buffer
 		pl    bytes.Buffer
 		cmd   byte
-	)  
+	)
 	if cn.Password != "" {
 		flags |= 0x1
 	}
-  // client id
-	flags |= 0x2 
+	// client id
+	flags |= 0x2
 	if cn.KeepAlive > 0 {
 		flags |= 0x4
 	}
 	if cn.Username != "" {
 		flags |= 0x8
 	}
-	/* d e b u g */  
+	/* d e b u g */
 	// cmd = cn.Command | flags
 	// NOTE: TODO:
 	// . this has changed
 	// original
 	// cmd = cn.Command
 	// new
-	/* d e b u g */  
+	/* d e b u g */
 	cmd = cn.Command
 	if cn.Meta.CleanStart {
 		var opts byte = 0x8 // clean-start bit
@@ -144,14 +144,14 @@ func (cn *Connect) Encode() (err error) {
 	logger.FDebugf("Encode", "% x\n", cn.Header.Bytes())
 	cn.Header.Write(vh.Bytes())
 	cn.Encoded = cn.Header
-	/* d e b u g */  
+	/* d e b u g */
 	// varHeader = append(varHeader, byte(vhLength & 0xff00 >> 8))
 	// varHeader = append(varHeader, byte(vhLength & 0x00ff))
 	// varHeader = append(varHeader, bstr...)
 	// EncodeLength(int32(len(varHeader)), cn.Header)
 	// cn.Header.Write(varHeader)
 	// cn.Header.Write(payload)
-	/* d e b u g */  
+	/* d e b u g */
 	return err
 }
 
@@ -175,7 +175,7 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 	// for buff[lenLen] & 0x80 != 0{
 	//   lenLen += 1
 	// }
-	/* d e b u g */  
+	/* d e b u g */
 	headerBoundary := GetHeaderBoundary(buff)
 	packets := (*buff)[headerBoundary:]
 	/* d e b u g */
@@ -217,17 +217,14 @@ func (cn *Connect) DecodeFrom(buff *[]byte) (err error) {
 	return err
 }
 
-
 func (cn *Connect) Metadata() *ProtoMeta {
 	return nil
 }
-
 
 func (cn *Connect) String() string {
 	return fmt.Sprintf("\n\tUsername(%s), Password(NONE),\n\t ClientId(%s), KeepAlive(%d), Version(%s).",
 		cn.Username, cn.ClientId, cn.KeepAlive, cn.Version)
 }
-
 
 func (cn *Connect) UUID() (uid uuid.UUID) {
 	uid = (*cn.Protocol.Id)
@@ -238,9 +235,9 @@ func (cn *Connect) UUID() (uid uuid.UUID) {
 // internal `Encoded` data.
 func (cn *Connect) GetPacket() protobase.PacketInterface {
 	var (
-		data []byte  = cn.Encoded.Bytes()
-		dlen int     = len(data)
-		code byte    = cn.Command
+		data []byte         = cn.Encoded.Bytes()
+		dlen int            = len(data)
+		code byte           = cn.Command
 		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 

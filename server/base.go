@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 // Server contains bunch of interfaces and functionalities for serving
 // connections compatible with Protox. It has APIs for interacting with
@@ -27,8 +27,8 @@ package server
 
 /*
 * TODO:
-* . decouple Buffer Pool from direct import 
-*/
+* . decouple Buffer Pool from direct import
+ */
 
 import (
 	"errors"
@@ -117,23 +117,23 @@ type Server struct {
 	sync.RWMutex
 	protobase.ServerInterface
 
-	Clients            map[net.Conn]protobase.ProtoConnection                 
-	Router             map[string]map[string]protobase.ProtoConnection        
-	onNewClient        func(string, string, string) protobase.ClientInterface 
+	Clients            map[net.Conn]protobase.ProtoConnection
+	Router             map[string]map[string]protobase.ProtoConnection
+	onNewClient        func(string, string, string) protobase.ClientInterface
 	onNewConnection    ConnectionDelegate
 	onNewMessage       ServerHandlerFunc
 	permissionDelegate func(protobase.AuthInterface, ...string) bool
 	Authenticator      protobase.AuthInterface
-	Store              protobase.MessageStorage                               
+	Store              protobase.MessageStorage
 	State              *serverState
 	rt                 *Router
-	listener           *net.Listener                                          
+	listener           *net.Listener
 	buffer             *buffpool.BuffPool
 	opts               *ServerConfigs
-	corous             sync.WaitGroup                                         
-	heartbeat          int                                                    
-  Status             uint32
-  StatusChan         chan uint32
+	corous             sync.WaitGroup
+	heartbeat          int
+	Status             uint32
+	StatusChan         chan uint32
 	critical           chan struct{}
 	// TODO: NOTE:
 	//  . add timestamp and expiration date.

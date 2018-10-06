@@ -18,23 +18,23 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
 import (
-  "github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protobase"
 )
 
 // Ensure protocol (interface) conformance.
 var (
-  _ protobase.ConStateInterface = (*constatebase)(nil)
-  _ protobase.ConnectionState = (*constate)(nil)  
+	_ protobase.ConStateInterface = (*constatebase)(nil)
+	_ protobase.ConnectionState   = (*constate)(nil)
 )
 
 // constatebase is base struct for constate.
 type constatebase struct {
-  Conn protobase.BaseControlInterface
+	Conn protobase.BaseControlInterface
 }
 
 // constate implements state receiver methods.
@@ -132,14 +132,14 @@ func (csb *constatebase) OnDISCONNECT(packet protobase.PacketInterface) {
 
 // onQueue is a handler for Queue control packets.
 func (csb *constatebase) OnQUEUE(packet protobase.PacketInterface) {
-  const fn string = "OnQueue"
+	const fn string = "OnQueue"
 	logger.FDebug(fn, " in constatebase.")
 	csb.Conn.Shutdown()
 }
 
 // onQueueAck is a handler for Queue acknowledge packets.
 func (csb *constatebase) OnQueueAck(packet protobase.PacketInterface) {
-  const fn string = "OnQueueAck"
+	const fn string = "OnQueueAck"
 	logger.FDebug(fn, " in constatebase.")
 	csb.Conn.Shutdown()
 }

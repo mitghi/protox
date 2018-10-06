@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 // Broker contains a sample broker and more.
 package broker
@@ -39,15 +39,15 @@ import (
 
 // Ensure interface (protocol) conformance.
 var (
-  _ protobase.BrokerInterface = (*Broker)(nil)
+	_ protobase.BrokerInterface = (*Broker)(nil)
 )
 
 // NewBroker returns a configured Broker
 // from provided Options.
 func NewBroker(opts Options) protobase.BrokerInterface {
-  var (
-    ret *Broker = &Broker{}
-  )
+	var (
+		ret *Broker = &Broker{}
+	)
 	ret.server = server.NewServer()
 	ret.exitch = ret.server.GetErrChan()
 	if opts.Auth != nil {
@@ -124,10 +124,10 @@ func (brk *Broker) handleSignals() {
 }
 
 func (brk *Broker) Start() (ok bool) {
-  var (
-    serverStatus uint32
-    statusChan <-chan uint32
-  )
+	var (
+		serverStatus uint32
+		statusChan   <-chan uint32
+	)
 	if atomic.LoadUint32(&brk.running) == BrokerRunning {
 		return false
 	} else if status := brk.server.GetStatus(); status != protobase.ServerNone {
@@ -139,21 +139,21 @@ func (brk *Broker) Start() (ok bool) {
 	}
 	atomic.StoreUint32(&brk.firstRun, 1)
 	logger.Info("[+] starting server....")
-  // spawn handler coroutines
+	// spawn handler coroutines
 	go brk.handleSignals()
 	go brk.server.ServeTCP(ADDR)
-  statusChan = brk.server.GetStatusChan()
-  serverStatus = <-statusChan
-  switch serverStatus {
-  case protobase.ServerRunning:
-    atomic.StoreUint32(&brk.running, BrokerRunning)
-    ok = true
-  case protobase.ServerStopped:
-    atomic.StoreUint32(&brk.running, BrokerStopping)
-    ok = false
-  default:
-    ok = false
-  }
+	statusChan = brk.server.GetStatusChan()
+	serverStatus = <-statusChan
+	switch serverStatus {
+	case protobase.ServerRunning:
+		atomic.StoreUint32(&brk.running, BrokerRunning)
+		ok = true
+	case protobase.ServerStopped:
+		atomic.StoreUint32(&brk.running, BrokerStopping)
+		ok = false
+	default:
+		ok = false
+	}
 	return ok
 }
 

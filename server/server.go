@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package server
 
@@ -47,7 +47,7 @@ func NewServer() *Server {
 	server.Router = make(map[string]map[string]protobase.ProtoConnection)
 	server.heartbeat = 1
 	server.Status = protobase.ServerNone
-  server.StatusChan = make(chan uint32, 1)
+	server.StatusChan = make(chan uint32, 1)
 	server.critical = make(chan struct{}, 1)
 	server.buffer = buffpool.NewBuffPool()
 	server.rt = NewRouterWithBuffer(server.buffer)
@@ -79,7 +79,7 @@ func (s *Server) GetStatus() uint32 {
 // GetStatusChan returns a channel containing the server status.
 // It is used for reterieving initial status.
 func (s *Server) GetStatusChan() <-chan uint32 {
-  return s.StatusChan
+	return s.StatusChan
 }
 
 // GetErrChan returns a channel to the caller. It sends a packet when server
@@ -125,6 +125,7 @@ func (s *Server) SetHeartBeat(heartbeat int) {
 func (s *Server) SetMessageStore(store protobase.MessageStorage) {
 	s.Store = store
 }
+
 // SetLogger is a method that implements `prtobase.ILoggable`.
 func (s *Server) SetLogger(l protobase.LoggingInterface) {
 	logger = l
@@ -154,6 +155,7 @@ func (s *Server) Redeliver(prc protobase.ProtoConnection) {
 func (s *Server) SetMessageHandler(fn ServerHandlerFunc) {
 	s.onNewMessage = fn
 }
+
 // SetStatus sets the internal status to the new argument status and
 // returns its old value, atomically.
 func (s *Server) SetStatus(status uint32) uint32 {

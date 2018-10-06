@@ -18,14 +18,14 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 // package protocol provide implementation of protox data units.
 package protocol
 
 import (
 	"bytes"
-  "errors"
+	"errors"
 
 	"github.com/google/uuid"
 
@@ -35,11 +35,11 @@ import (
 
 /*
 * TODO:
-* - make uid provider configurable 
+* - make uid provider configurable
 * - refactor uid provider into a package
 * - support alternative meta information ( refactor into abstract processor, pattern matching to user-provided criteria )
 * - intenral cmd flag set for management console
-*/  
+ */
 
 // Log is central logger
 var logger protobase.LoggingInterface
@@ -51,15 +51,15 @@ func init() {
 
 // Error messages
 var (
-  EINVLWRTBFR error  = errors.New("protox: No buffer writer to use")
-	HeartBeatFailure   = errors.New("protox: HeartBeat not received in timewindow")
-	MalformedPacket    = errors.New("protox: Packet is malformed")
-	InvalidCmdForState = errors.New("protox: Command inconsistent with state")
-	CriticalTimeout    = errors.New("protox: Critial timeout section missed")
-	InvalidHeader      = errors.New("protox: Invalid header")
+	EINVLWRTBFR        error = errors.New("protox: No buffer writer to use")
+	HeartBeatFailure         = errors.New("protox: HeartBeat not received in timewindow")
+	MalformedPacket          = errors.New("protox: Packet is malformed")
+	InvalidCmdForState       = errors.New("protox: Command inconsistent with state")
+	CriticalTimeout          = errors.New("protox: Critial timeout section missed")
+	InvalidHeader            = errors.New("protox: Invalid header")
 )
 
-// Protocol is protocol structure embedded 
+// Protocol is protocol structure embedded
 // in each packet. It has functionalities for
 // parsing and crafting packets.
 type Protocol struct {
@@ -81,7 +81,7 @@ type Protocol struct {
 type ProtoMeta struct {
 	// TODO
 	//  extend meta fields
-  //  rearrange struct fields
+	//  rearrange struct fields
 	Qos        byte
 	Dup        bool
 	Ret        bool

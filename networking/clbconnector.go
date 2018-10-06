@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -32,10 +32,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mitghi/timer"	  
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
 	"github.com/mitghi/protox/protocol/packet"
+	"github.com/mitghi/timer"
 )
 
 // ensure interface (protocol) conformance
@@ -84,33 +84,33 @@ func dialRemoteAddr(addr string, tlsopts *tls.Config, isTLS bool) (net.Conn, err
 func NewClientConnection(addr string) (clbc *CLBConnection) {
 	// TODO
 	// . add options
-  // . remove hard-coded values
-  clbc = &CLBConnection {
-    protocon: &protocon {
-      // NOTE
-      // . connection is not initialized on purpose
-      Conn:            nil,
-      Reader:          nil,
-      Writer:          nil,
-      corous:          sync.WaitGroup{},
-      ErrChan:         nil,
-      ShouldTerminate: nil,
-      SendChan:        nil,
-      Status:          STATDISCONNECT,
-      addr:            addr,
-    },
-    clock:          &sync.RWMutex{},
-    clblock:        &sync.RWMutex{},
-    heartbeat:      2,
-    pinger:         nil,
-    client:         nil,
-    storage:        nil,
-    shouldContinue: true,
-    stateOpts:      make(map[byte]protobase.OptionInterface),
-    clbpub:         make(map[uint16]func(protobase.OptionInterface, protobase.MsgInterface)),
-    clbsub:         make(map[uint16]func(protobase.OptionInterface, protobase.MsgInterface)),
-  }  
-  // set the state to client genesis
+	// . remove hard-coded values
+	clbc = &CLBConnection{
+		protocon: &protocon{
+			// NOTE
+			// . connection is not initialized on purpose
+			Conn:            nil,
+			Reader:          nil,
+			Writer:          nil,
+			corous:          sync.WaitGroup{},
+			ErrChan:         nil,
+			ShouldTerminate: nil,
+			SendChan:        nil,
+			Status:          STATDISCONNECT,
+			addr:            addr,
+		},
+		clock:          &sync.RWMutex{},
+		clblock:        &sync.RWMutex{},
+		heartbeat:      2,
+		pinger:         nil,
+		client:         nil,
+		storage:        nil,
+		shouldContinue: true,
+		stateOpts:      make(map[byte]protobase.OptionInterface),
+		clbpub:         make(map[uint16]func(protobase.OptionInterface, protobase.MsgInterface)),
+		clbsub:         make(map[uint16]func(protobase.OptionInterface, protobase.MsgInterface)),
+	}
+	// set the state to client genesis
 	clbc.State = NewCGenesis(clbc)
 	return clbc
 }
@@ -167,12 +167,12 @@ func (clbc *CLBConnection) SendMessage(pb protobase.MsgInterface) {
 }
 
 func (clbc *CLBConnection) Disconnect() error {
-  /* d e b u g */
+	/* d e b u g */
 	// if clbc.GetStatus() == protobase.STATONLINE {
 	// 	clbc.ShouldTerminate <- struct{}{}
 	// 	return nil
 	// }
-  /* d e b u g */  
+	/* d e b u g */
 	if clbc.GetStatus() == protobase.STATONLINE {
 		_ = clbc.sendDisconnect()
 		clbc.SetStatus(protobase.STATGODOWN)
@@ -185,12 +185,12 @@ func (clbc *CLBConnection) sendDisconnect() error {
 	disconn := protocol.NewDisconnect()
 	disconn.Encode()
 	packet := disconn.GetPacket().(*Packet)
-  /* d e b u g */  
+	/* d e b u g */
 	// if err := clbc.protocon.Send(packet); err != nil {
 	// 	logger.FDebug("sendDisconnect", "cannot send disconnect packet", err)
 	// 	return err
 	// }
-  /* d e b u g */  
+	/* d e b u g */
 	clbc.protocon.Send(packet)
 	return nil
 }
@@ -199,21 +199,21 @@ func (clbc *CLBConnection) sendPing() {
 	ping := protocol.NewPing()
 	ping.Encode()
 	packet := ping.GetPacket().(*Packet)
-  /* d e b u g */  
+	/* d e b u g */
 	// if err := clbc.Send(packet); err != nil {
 	// 	logger.FDebug("sendPing", "cannot send ping packet", err)
 	// 	return err
 	// }
-  /* d e b u g */  
+	/* d e b u g */
 	clbc.Send(packet)
 }
 
 func (clbc *CLBConnection) Send(packet *Packet) {
 	clbc.SendLock.Lock()
 	if clbc.SendChan != nil {
-    /* d e b u g */    
+		/* d e b u g */
 		// NOTE: IMPORTANT: NEW
-    /* d e b u g */    
+		/* d e b u g */
 		if clbc.pinger != nil {
 			clbc.pinger.Reset(time.Duration(time.Second * time.Duration(clbc.heartbeat)))
 		}
@@ -353,31 +353,31 @@ func (clbc *CLBConnection) ContinueFlag(f bool) {
 // Handle is the entry routine into `Connection`. It is the main loop
 // for handling initial logics/allocating and passing data to different stages.
 func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
-  // initalize variables regardless of  
-  // possibility of early return
-  // variable definition instructions
-  // gets rearranged by the compiler** ( TODO : dig into golang source code)
+	// initalize variables regardless of
+	// possibility of early return
+	// variable definition instructions
+	// gets rearranged by the compiler** ( TODO : dig into golang source code)
 	var (
-		dur time.Duration = time.Second * time.Duration(clbc.heartbeat) // heartbeat interval
-    ch chan *Packet                                                 // timeout channel ( initial packet ) 
-    stat uint32                                                     // connection status
+		dur  time.Duration = time.Second * time.Duration(clbc.heartbeat) // heartbeat interval
+		ch   chan *Packet                                                // timeout channel ( initial packet )
+		stat uint32                                                      // connection status
 	)
-  /* critical section */  
+	/* critical section */
 	clbc.clock.RLock()
 	shcont := clbc.shouldContinue
 	clbc.clock.RUnlock()
-  /* critical section - end */  
+	/* critical section - end */
 	if !shcont {
 		logger.Debug("* [Flag] discontinue flag is set, terminating....")
 		return
 	}
 	clbc.SetStatus(STATCONNECTING)
 	// mark that connect packet is received
-  /* critical section */    
+	/* critical section */
 	clbc.clock.Lock()
 	clbc.State = NewCGenesis(clbc)
 	clbc.clock.Unlock()
-  /* critical section */    
+	/* critical section */
 	if !clbc.State.HandleDefault(nil) {
 		clbc.SetStatus(STATERR)
 		// NOTE
@@ -402,16 +402,16 @@ func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
 		clbc.client.Disconnected(protobase.PURejected)
 		return
 	}
-  // send first ping packet
-  // set timer to routin ping delivery
-  // run I/O coroutines
-  // finalize setup
+	// send first ping packet
+	// set timer to routin ping delivery
+	// run I/O coroutines
+	// finalize setup
 	clbc.sendPing()
 	// prevent data race by concurrent access
-  /* critical section */  
+	/* critical section */
 	clbc.clock.Lock()
 	clbc.pinger = timer.NewTimer(dur)
-  // increment work group
+	// increment work group
 	clbc.corous.Add(2)
 	go clbc.recvHandler()
 	go clbc.uniSendHandler()
@@ -424,18 +424,18 @@ func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
 		clbc.cendch = make(chan struct{})
 		clbc.ShouldTerminate = make(chan struct{}, 1)
 	}
-  // set this flag to signal fresh start
-  // redeliver remaining packets
+	// set this flag to signal fresh start
+	// redeliver remaining packets
 	clbc.justStarted = true
 	go func() {
-    // TODO
-    // . remove hard-coded duration
+		// TODO
+		// . remove hard-coded duration
 		time.Sleep(time.Millisecond * 2)
 		clbc.SendRedelivery()
 		_ = clbc.client.Connected(clbc.stateOpts[protocol.CCONNACK])
 	}()
 	clbc.clock.Unlock()
-  /* critical section - end */
+	/* critical section - end */
 	// main loop
 ML:
 	for {
@@ -753,17 +753,17 @@ func (clbc *CLBConnection) Queue(action protobase.QAction, address string, retur
 }
 
 func (clbc *CLBConnection) HandleDefault(packet protobase.PacketInterface) (status bool) {
-  const fn string = "HandleDefault"
-  logger.Infof(fn, "* [CLBConnection] is not implemented.")
-  return false
+	const fn string = "HandleDefault"
+	logger.Infof(fn, "* [CLBConnection] is not implemented.")
+	return false
 }
 
 func (clbc *CLBConnection) Run() {
-  const fn string = "Run"
-  logger.Infof(fn, "* [CLBConnection] is not implemented.")  
+	const fn string = "Run"
+	logger.Infof(fn, "* [CLBConnection] is not implemented.")
 }
 
 func (clbc *CLBConnection) SetNextState() {
-  const fn string = "SetNextState"
-  logger.Infof(fn, "* [CLBConnection] is not implemented.")  
+	const fn string = "SetNextState"
+	logger.Infof(fn, "* [CLBConnection] is not implemented.")
 }

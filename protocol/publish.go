@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protocol
 
@@ -146,9 +146,9 @@ func (self *Publish) UUID() (uid uuid.UUID) {
 // internal `Encoded` data.
 func (self *Publish) GetPacket() protobase.PacketInterface {
 	var (
-		data []byte  = self.Encoded.Bytes()
-		dlen int     = len(data)
-		code byte    = self.Command
+		data []byte         = self.Encoded.Bytes()
+		dlen int            = len(data)
+		code byte           = self.Command
 		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 

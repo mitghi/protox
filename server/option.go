@@ -1,7 +1,7 @@
 package server
 
 import (
-	"crypto/tls"  
+	"crypto/tls"
 )
 
 // UNIXSOPtions contains necessary information required by unix socket server.
@@ -31,7 +31,7 @@ type ServerConfigs struct {
 	Addr   string
 	Mode   byte
 	Type   byte
-	// TRate is the cycle interval in milliseconds 
+	// TRate is the cycle interval in milliseconds
 	// for performing status check.
 	TRate int
 	// TODO

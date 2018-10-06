@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package client
 
@@ -36,7 +36,6 @@ import (
 // Ensure protocol (interface) conformance.
 var _ protobase.ClientInterface = (*Client)(nil)
 
-
 func NewClient(username string, password string, cid string) *Client {
 	client := &Client{
 		RWMutex:     &sync.RWMutex{},
@@ -50,24 +49,22 @@ func NewClient(username string, password string, cid string) *Client {
 	return client
 }
 
-
 func (c *Client) SetServer(server protobase.ServerInterface) {
 	c.Server = server
 }
 
-
 func (c *Client) Connected(opts protobase.OptionInterface) bool {
 	logger.Debug("+ [Client] Connected.")
-  /* d e b u g */
+	/* d e b u g */
 	// (*c.Server).NotifyConnected(c)
-  /* d e b u g */  
+	/* d e b u g */
 	return true
 }
 
 func (c *Client) Disconnected(opts protobase.OptCode) {
-  /* d e b u g */  
+	/* d e b u g */
 	// (*c.Server).NotifyDisconnected(c)
-  /* d e b u g */  
+	/* d e b u g */
 	logger.Debug("- [Client] Disconnected.")
 }
 
@@ -84,9 +81,9 @@ func (c *Client) Subscribe(msg protobase.MsgInterface) {
 	topic := msg.Envelope().Route()
 	logger.Debug("+ [1][Client] Marked to receive updates.")
 	logger.Debugf("+ [1][Client] Mark has QoS(%d)", int(msg.QoS()))
-  /* d e b u g */  
+	/* d e b u g */
 	// (*c.Server).NotifySubscribe(topic, c)
-  /* d e b u g */  
+	/* d e b u g */
 	c.AddTopic(topic)
 }
 

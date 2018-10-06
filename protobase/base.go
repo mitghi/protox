@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protobase
 
@@ -167,7 +167,7 @@ type ClientInterface interface {
 	Setup() error
 	// TODO:
 	// . investigate addition of auth mechanism
-	//   e.g. SetAuthMechanism()  
+	//   e.g. SetAuthMechanism()
 }
 
 //
@@ -199,7 +199,7 @@ type ServerInterface interface {
 
 	GetStatus() uint32
 	GetErrChan() <-chan struct{}
-  GetStatusChan() <-chan uint32
+	GetStatusChan() <-chan uint32
 	// TODO
 	// . improve this
 	// NotifyPublish(topic string, message string, prc ProtoConnection, dir MsgDir)
@@ -207,7 +207,7 @@ type ServerInterface interface {
 	Setup()
 }
 
-// PacketInterface is a interface to access 
+// PacketInterface is a interface to access
 // low level packet data.
 type PacketInterface interface {
 	SetData(*[]byte)
@@ -433,26 +433,25 @@ type ProtoEventInterface interface {
 	OnQUEUE(PacketInterface)
 }
 
-
 // ConStateInterface is the requirement
 // for implementing protox event handler.
 type ConStateInterface interface {
-  ProtoEventInterface
-	HandleDefault(packet PacketInterface) (status bool)        // dispatch loop
-	Handle(packet PacketInterface)                             // bootstrap routine
-	Run()                                                      // main routine
-	SetNextState()                                             // push state handler
-  Shutdown()
+	ProtoEventInterface
+	HandleDefault(packet PacketInterface) (status bool) // dispatch loop
+	Handle(packet PacketInterface)                      // bootstrap routine
+	Run()                                               // main routine
+	SetNextState()                                      // push state handler
+	Shutdown()
 }
 
-// ConnectionState is the interface for status 
-// of a connection. Each state must implement 
+// ConnectionState is the interface for status
+// of a connection. Each state must implement
 // all of its functionalities, during different
 // stages in the program, data will be passed
 // between states which changes the behavior
-// of its underlying functionalities. For 
+// of its underlying functionalities. For
 // example, during `Genesis` stage, any control
-// packet besides `Connect` results in immediate 
+// packet besides `Connect` results in immediate
 // disconnection from the broker. After `Genesis`,
 // data will be passed to `Online` state which is
 // opposite of `Genesis` state ( `Connect` results
@@ -463,10 +462,9 @@ type ConnectionState interface {
 	SetServer(server ServerInterface)
 }
 
-// BaseControlInterface is the interface 
+// BaseControlInterface is the interface
 // to conform to fulfilling requirements
 // of internal management console.
 type BaseControlInterface interface {
-  Shutdown()
+	Shutdown()
 }
-

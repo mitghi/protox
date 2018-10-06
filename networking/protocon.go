@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package networking
 
@@ -28,24 +28,24 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-  
+
 	"github.com/mitghi/protox/protocol"
 	"github.com/mitghi/protox/protocol/packet"
 )
 
-// protocon is the data flow layer embedding 
-// network fd, low level struct implementing 
+// protocon is the data flow layer embedding
+// network fd, low level struct implementing
 // and providign I/O, compatible to protox.
 type protocon struct {
-  // TODO
-  // . check padding
+	// TODO
+	// . check padding
 	sync.RWMutex
 
-	Conn            net.Conn            // connection section
-	Reader          *bufio.Reader
-	Writer          *bufio.Writer       // end
-  
-	corous          sync.WaitGroup      // spawned coroutines
+	Conn   net.Conn // connection section
+	Reader *bufio.Reader
+	Writer *bufio.Writer // end
+
+	corous          sync.WaitGroup // spawned coroutines
 	SendLock        sync.Mutex
 	cendch          chan struct{}
 	ShouldTerminate chan struct{}
@@ -53,16 +53,16 @@ type protocon struct {
 	SendChan        chan *packet.Packet
 	PrioSendChan    chan *packet.Packet // Priority send channel
 	RecvChan        chan *packet.Packet
-	addr            string              // ip address
-	Status          uint32              // status flag
-  // TODO
-  // . implement connection state ( reuse this struct. Prevent new allocations. )
-  // . set the external error handler ( non-critical errors )  
+	addr            string // ip address
+	Status          uint32 // status flag
+	// TODO
+	// . implement connection state ( reuse this struct. Prevent new allocations. )
+	// . set the external error handler ( non-critical errors )
 	// State           ConnectionState // end
 	// ErrorHandler func(client *protobase.ClientInterface)
 }
 
-// AllocateChannels initializes internal 
+// AllocateChannels initializes internal
 // send/receive channels. Their creation
 // are deferred to reduce unneccessary
 // memory allocations up until all initial
@@ -72,24 +72,24 @@ func (pc *protocon) AllocateChannels() {
 	pc.PrioSendChan = make(chan *Packet, 1024)
 	pc.RecvChan = make(chan *Packet, 1024)
 	pc.ErrChan = make(chan struct{}, 1)
-  /* d e b u g */
+	/* d e b u g */
 	// pc.cendch = make(chan struct{})
 	// pc.ShouldTerminate = make(chan struct{})
-  /* d e b u g */  
+	/* d e b u g */
 }
 
 // Receive is a helper function which creates
 // a new packet from incomming data. Result
 // should be later checked to create/cast
-// into a packet. When succesfull, it returns 
+// into a packet. When succesfull, it returns
 // the formed packet; nil with error when
 // unsuccessfull. NOTE: Blocking routine.
 func (pc *protocon) Receive() (p *Packet, err error) {
-  var (
-    pck *[]byte // incoming data; don't pass slice header
-    cmd byte    // packet type flag
-    length int  // length of remaining data in buffer
-  )
+	var (
+		pck    *[]byte // incoming data; don't pass slice header
+		cmd    byte    // packet type flag
+		length int     // length of remaining data in buffer
+	)
 	pck, cmd, length, err = pc.receive()
 	if err != nil {
 		return nil, err
@@ -99,18 +99,18 @@ func (pc *protocon) Receive() (p *Packet, err error) {
 }
 
 // ReceiveWithTimeout waits `timeout` seconds before
-// returning an erorr. It polls responsible coroutine 
+// returning an erorr. It polls responsible coroutine
 // `timeout` seconds and issues timeout with no data
 // and error set to 'CriticalTimeout'.
 func (pc *protocon) ReceiveWithTimeout(timeout time.Duration, inbox chan *Packet) (pcket *Packet, err error) {
-  // TODO
-  // . investigate timer channel
-  //   for deadlock.
-  var (
-    period <- chan time.Time = time.After(timeout) // timeout channel
-  )
-  // increment wait group
-  // and spawn the job
+	// TODO
+	// . investigate timer channel
+	//   for deadlock.
+	var (
+		period <-chan time.Time = time.After(timeout) // timeout channel
+	)
+	// increment wait group
+	// and spawn the job
 	pc.corous.Add(1)
 	go func(pchan chan<- *Packet, wg *sync.WaitGroup) {
 		packet, err := pc.Receive()
@@ -124,19 +124,19 @@ func (pc *protocon) ReceiveWithTimeout(timeout time.Duration, inbox chan *Packet
 	}(inbox, &pc.corous)
 	select {
 	case packet, ok := <-inbox:
-    /* d e b u g */
-    // accelerate garbage collection
+		/* d e b u g */
+		// accelerate garbage collection
 		// pchan = nil
 		// period = nil
-    /* d e b u g */
+		/* d e b u g */
 		if !ok {
 			return nil, protocol.BadMsgTypeError
 		}
 		return packet, nil
 	case <-period:
-    /* d e b u g */    
+		/* d e b u g */
 		// pchan = nil
-    /* d e b u g */    
+		/* d e b u g */
 		logger.Debug("[PeriodError] Timeout occured")
 		return nil, protocol.CriticalTimeout
 	}
@@ -200,38 +200,38 @@ func (pc *protocon) SetStatus(status uint32) {
 }
 
 // receive reads the protocol command flag
-// and strips fixed header. It fills the 
+// and strips fixed header. It fills the
 // the buffer according to packet header.
 // Error indicates broken I/O pipe or
 // protocol violation ( malformed data ,
-// incorrect header , ... ). 
+// incorrect header , ... ).
 func (pc *protocon) receive() (result *[]byte, code byte, length int, err error) {
-  const fn string = "receive"
+	const fn string = "receive"
 	var (
 		pack []byte
-		rl   uint32    // remaining length
-		cmd byte 		   // command flag (first higher byte of new packet)
+		rl   uint32 // remaining length
+		cmd  byte   // command flag (first higher byte of new packet)
 	)
 	msg, err := pc.Reader.ReadByte()
 	if err != nil {
-    logger.FDebug(fn, "readpacket(readbyte)error, msg, err", msg, err)    
+		logger.FDebug(fn, "readpacket(readbyte)error, msg, err", msg, err)
 		return nil, 0, 0, err
 	}
 	// NOTE: 0xF0 is mask for command byte
 	cmd = (msg & 0xF0) >> 4
-  /* d e b u g */
-  // check if command flag is valid,
-  // early return when invalid
+	/* d e b u g */
+	// check if command flag is valid,
+	// early return when invalid
 	// if pc.precheck(&cmd) == false {
 	// 	return nil, 0, 0, InvalidCmdForState
 	// }
-  /* d e b u g */  
+	/* d e b u g */
 	pack = append(pack, msg)
 	// Read remaining bytes after the fixed header
 	err = protocol.ReadPacket(pc.Reader, &pack, &rl)
 	if err != nil {
-    logger.FDebug(fn, "readpacket(receive)error, msg, err", msg, err, rl)
-    logger.FDebug(fn, "readpacket pc.reader:", pc.Reader, pc.Reader.Size())
+		logger.FDebug(fn, "readpacket(receive)error, msg, err", msg, err, rl)
+		logger.FDebug(fn, "readpacket pc.reader:", pc.Reader, pc.Reader.Size())
 		return nil, 0, 0, err
 	}
 	// NOTE: rl not included
@@ -245,30 +245,30 @@ func (pc *protocon) send(packet *Packet) (err error) {
 	defer pc.Unlock()
 	if pc.Writer == nil {
 		logger.FWarn(fn, "- [send] no buffer(writer) for writing data.")
-    logger.FDebug(fn, "- [send] protocon.Writer==nil.")
+		logger.FDebug(fn, "- [send] protocon.Writer==nil.")
 		return protocol.EINVLWRTBFR
 	}
-  // TODO
-  // . write remaining data
+	// TODO
+	// . write remaining data
 	_, err = pc.Writer.Write(*packet.Data)
 	if err != nil {
 		return err
 	}
 	err = pc.Writer.Flush()
-  if err != nil {
-    logger.FDebug(fn, "unable to flush data for transportation.", err)
-    return err
-  }
+	if err != nil {
+		logger.FDebug(fn, "unable to flush data for transportation.", err)
+		return err
+	}
 	return nil
 }
 
-// uniSendHandler is the transport coroutine 
-// responsible for sending data to its remote 
+// uniSendHandler is the transport coroutine
+// responsible for sending data to its remote
 // destination.
 func (pc *protocon) uniSendHandler() {
-  // TODO
-  // . handle broken channels
-  // . write test case
+	// TODO
+	// . handle broken channels
+	// . write test case
 	const fname string = "uniSendHandler"
 	defer func() {
 		logger.FDebug(fname, "* [UniSendHandler] is stopped. Signaling done to work group.")
@@ -301,13 +301,13 @@ func (pc *protocon) uniSendHandler() {
 	}
 }
 
-// SendHandler is the transport coroutine 
+// SendHandler is the transport coroutine
 // responsible for writing outgoing data to
-// send channel. 
+// send channel.
 func (pc *protocon) sendHandler() {
-  // TODO
-  // . propagate error and call 
-  //   responsible error handler.
+	// TODO
+	// . propagate error and call
+	//   responsible error handler.
 	const fname string = "sendHandler"
 	defer func() {
 		logger.FInfo(fname, "is stopped. Signaling done to work group.")
@@ -332,12 +332,12 @@ func (pc *protocon) sendHandler() {
 }
 
 // prioSendHandler is the transport coroutine
-// responsible for writing high priority 
+// responsible for writing high priority
 // outgoing data to priority send channel.
 func (pc *protocon) prioSendHandler() {
 	const fname string = "prioSendHandler"
 	defer func() {
-		logger.FInfo(fname, "is stopped. Signaling done to work group.")    
+		logger.FInfo(fname, "is stopped. Signaling done to work group.")
 		pc.corous.Done()
 	}()
 	for {
@@ -364,7 +364,6 @@ func (pc *protocon) prioSendHandler() {
 func (pc *protocon) handleSendError(err error) {
 	pc.Conn.Close()
 }
-
 
 // - - - - - - STASH - - - - - - -
 

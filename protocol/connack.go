@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package protocol
 
@@ -178,9 +178,9 @@ func (ca *Connack) UUID() (uid uuid.UUID) {
 // internal `Encoded` data.
 func (ca *Connack) GetPacket() protobase.PacketInterface {
 	var (
-		data []byte  = ca.Encoded.Bytes()
-		dlen int     = len(data)
-		code byte    = ca.Command
+		data []byte         = ca.Encoded.Bytes()
+		dlen int            = len(data)
+		code byte           = ca.Command
 		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
 	)
 
