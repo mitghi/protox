@@ -1,5 +1,7 @@
 # containers
 
+Developing efficient data structure require designing algorithms capable of making effective use of system resources. This process needs to take advantage of data types in use and finding superior solution. A design may prefer this approach to minimise expenses such as recurrent memory allocation and maximising the benefits by exploiting runtime facilities such as GC, use lock-free and wait-free data structures when appropriate.
+
 ## Radix
 
 ![img](../media/output.png)
