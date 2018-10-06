@@ -165,6 +165,9 @@ type ClientInterface interface {
 	SetCreds(CredentialsInterface)
 	SetUser(interface{})
 	Setup() error
+	// TODO:
+	// . investigate addition of auth mechanism
+	//   e.g. SetAuthMechanism()  
 }
 
 //
@@ -204,8 +207,8 @@ type ServerInterface interface {
 	Setup()
 }
 
-// PacketInterface is a interface used to abstract access to low level packet
-// information.
+// PacketInterface is a interface to access 
+// low level packet data.
 type PacketInterface interface {
 	SetData(*[]byte)
 	SetCode(byte)
@@ -266,7 +269,7 @@ type ProtoConnection interface {
 // the logics neccessary for handling low level details ( such as parsing and crafting
 // control packets, timeouts, send/receive and ... ) and connects a client to the broker.
 type ProtoClientConnection interface {
-	Handle()
+	Handle(PacketInterface)
 
 	SetMessageStorage(MessageBox)
 	SetHeartBeat(int)
@@ -411,3 +414,59 @@ type PermissionInterface interface {
 	SetPerm(string, string, string) error
 	UnsetPerm(string, string, string) error
 }
+
+// ProtoEventInterface is the interface for
+// implementing event handler responsible
+// for processing protox packets. It gets
+// invoked from compatible caller conforming
+// to 'protobase.ConnectionState'.
+type ProtoEventInterface interface {
+	OnCONNECT(PacketInterface)
+	OnCONNACK(PacketInterface)
+	OnPUBLISH(PacketInterface)
+	OnPUBACK(PacketInterface)
+	OnSUBSCRIBE(PacketInterface)
+	OnSUBACK(PacketInterface)
+	OnPING(PacketInterface)
+	OnPONG(PacketInterface)
+	OnDISCONNECT(PacketInterface)
+	OnQUEUE(PacketInterface)
+}
+
+
+// ConStateInterface is the requirement
+// for implementing protox event handler.
+type ConStateInterface interface {
+  ProtoEventInterface
+	HandleDefault(packet PacketInterface) (status bool)        // dispatch loop
+	Handle(packet PacketInterface)                             // bootstrap routine
+	Run()                                                      // main routine
+	SetNextState()                                             // push state handler
+  Shutdown()
+}
+
+// ConnectionState is the interface for status 
+// of a connection. Each state must implement 
+// all of its functionalities, during different
+// stages in the program, data will be passed
+// between states which changes the behavior
+// of its underlying functionalities. For 
+// example, during `Genesis` stage, any control
+// packet besides `Connect` results in immediate 
+// disconnection from the broker. After `Genesis`,
+// data will be passed to `Online` state which is
+// opposite of `Genesis` state ( `Connect` results
+// in immediate termination ).
+type ConnectionState interface {
+	ConStateInterface
+	SetClient(client ClientInterface)
+	SetServer(server ServerInterface)
+}
+
+// BaseControlInterface is the interface 
+// to conform to fulfilling requirements
+// of internal management console.
+type BaseControlInterface interface {
+  Shutdown()
+}
+
