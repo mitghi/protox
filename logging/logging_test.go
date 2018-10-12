@@ -34,5 +34,4 @@ func TestLogging(t *testing.T) {
 	logger := NewLogger("Test")
 	logger.FDebugf(_PACKAGE, "%s,%s,(%d),%v,%t,%#x", "simple", "test", 48, logger, true, []byte("end sequence."))
 	logger.FDebug(_PACKAGE, "test")
-
 }
