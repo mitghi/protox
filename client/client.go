@@ -87,23 +87,19 @@ func (c *Client) Subscribe(msg protobase.MsgInterface) {
 	c.AddTopic(topic)
 }
 
-//
 func (c *Client) GetTopics() []string {
 	return c.Topics
 }
 
-//
 func (c *Client) AddTopic(topic string) {
 	// TODO
 	c.Topics = append(c.Topics, topic)
 }
 
-//
 func (c *Client) SetAuthMechanism() {
 	// TODO
 }
 
-//
 func (c *Client) GetIdentifier() string {
 	return c.Username
 }

@@ -24,6 +24,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -41,7 +42,9 @@ var _ protobase.CLBUserInterface = (*CLBUser)(nil)
 var (
 	// TODO
 	// . add individual error messages for each option
-	CLBUserInvalid error = errors.New("CLBUser: invalid.")
+	CLBUserInvalid  error = errors.New("CLBUser: invalid.")
+	EDENYCONNECT    error = errors.New("CLBUser: deny connecting to already connected instance.")
+	EDENYDISCONNECT error = errors.New("CLBUser: deny disconnecting the already disconnected instance.")
 )
 
 // CLBUser implements client to broker connection.
@@ -52,14 +55,15 @@ type CLBUser struct {
 	// . check padding
 	sync.RWMutex
 
-	Conn       protobase.ProtoClientConnection
-	Cl         protobase.ClientInterface // associated client
-	Storage    protobase.MessageBox
-	Exch       chan struct{} // exit channel
-	exconnch   chan struct{} // connection exit channel
+	Conn       protobase.ProtoClientConnection // connection handler
+	Cl         protobase.ClientInterface       // associated client
+	Storage    protobase.MessageBox            // message storage
+	Exch       chan struct{}                   // exit channel
+	exconnch   chan struct{}                   // connection exit channel
 	CFCallback func(*CLBUser)
 	Addr       string
 	SecMRS     int
+	MinSecMRS  int
 	MaxRetry   int
 	HeartBeat  int
 	hadSetup   bool
@@ -72,13 +76,14 @@ type CLBUser struct {
 type CLBOptions struct {
 	// TODO:
 	// . check padding
-	Addr            string
-	MaxRetry        int
-	HeartBeat       int
 	ClientDelegate  func() protobase.ClientInterface
 	StorageDelegate protobase.MessageBox
 	Conn            protobase.ProtoClientConnection
 	CFCallback      func(*CLBUser)
+	Addr            string
+	MaxRetry        int
+	HeartBeat       int
+	MinSecMRS       int // minimum retry delay ( number in Milliseconds)
 	SecMRS          int // maximum sleep duration
 }
 
@@ -113,6 +118,7 @@ func NewCLBUser(opts CLBOptions) (clbu *CLBUser, ok bool) {
 		Addr:       opts.Addr,
 		CFCallback: opts.CFCallback,
 		SecMRS:     opts.SecMRS,
+		MinSecMRS:  opts.MinSecMRS,
 		Cl:         opts.ClientDelegate(),
 		HeartBeat:  opts.HeartBeat,
 		Storage:    opts.StorageDelegate,
@@ -153,20 +159,20 @@ func (u *CLBUser) Setup() error {
 
 // IsRunning returns whether current
 // instance is active.
-func (u *CLBUser) IsRunning() (ret bool) {
+func (u *CLBUser) IsRunning() (ok bool) {
 	u.RLock()
 	defer u.RUnlock()
-	ret = u.Running
-	return ret
+	ok = u.Running
+	return ok
 }
 
 // IsConnected returns whether instance
 // is connected.
-func (u *CLBUser) IsConnected() (ret bool) {
+func (u *CLBUser) IsConnected() (ok bool) {
 	u.RLock()
 	defer u.RUnlock()
-	ret = u.Connected
-	return ret
+	ok = u.Connected
+	return ok
 }
 
 // GetExitCh returns exit channel.
@@ -192,21 +198,24 @@ func (u *CLBUser) SetRunning(b bool) {
 // Disconnect terminates the connection of
 // the running instance and invokes
 // 'Disconnected' receiver method on the
-// associated client.
-func (u *CLBUser) Disconnect() {
-	// TODO
-	// . check for closed channel
-	// . return error code
-	// NOTE
-	// . DONOT CALL THIS RECEIVER MANUALLY
+// associated client. NOTE: do not call this
+// method manually.
+func (u *CLBUser) Disconnect() (err error) {
+	const fn string = "Disconnect"
 	if u.IsRunning() {
-		err := u.Conn.Disconnect()
-		logger.Debugf("* [Client/User(CLBConnector)] Disconnecting. Error code (%+v).", err)
+		err = u.Conn.Disconnect()
+		if err != nil {
+			logger.FWarn(fn, "- [Client/User(CLBUser)] unable to disconnect the connection. error:", err)
+		} else {
+			logger.FInfof(fn, "* [Client/User(CLBUser)] disconnecting.")
+		}
 		// call delegate method manually ( because its forcefully
 		// terminating either because of SIGNALS or FATAL conditions.
 		u.Cl.Disconnected(protobase.PUForceTerminate)
 		u.exconnch <- struct{}{}
+		return nil
 	}
+	return EDENYDISCONNECT
 }
 
 // Connect establishes connection
@@ -214,9 +223,10 @@ func (u *CLBUser) Disconnect() {
 // reconnecting and retrying to
 // the root destination based on
 // setup options.
-func (u *CLBUser) Connect() {
-	// TODO
-	// . return error code
+func (u *CLBUser) Connect() (err error) {
+	if u.IsRunning() {
+		return EDENYCONNECT
+	}
 	u.SetRunning(true)
 	go func() {
 		clexch := make(chan struct{}, 1)
@@ -236,26 +246,32 @@ func (u *CLBUser) Connect() {
 				// . refactor and set sleep cycles
 				//   by corresponding receiver
 				//   methods.
-				minslp = time.Millisecond * 10
-				maxslp = time.Second * time.Duration(u.SecMRS)
-				dur    = minslp
+				minslp      time.Duration = time.Millisecond * time.Duration(u.MinSecMRS)
+				maxslp      time.Duration = time.Second * time.Duration(u.SecMRS)
+				dur         time.Duration = minslp
+				attempt     int           = 0
+				shouldRetry bool          = (u.MaxRetry <= 0)
 			)
-			// TODO
-			// . add maximum retry
+		ML:
 			for u.IsRunning() {
+				// enter main loop
+				// it exits on faulty connection
 				u.Conn.Handle(nil)
+				fmt.Println(dur)
 				time.Sleep(dur)
 				dur *= 2
+				attempt += 1
+				if shouldRetry && attempt >= u.MaxRetry {
+					break ML
+				}
 				if dur > maxslp {
 					dur = minslp
 				}
 			}
-			// TODO
-			// . send disconnect packet
 		}()
-		// <-u.Exch
 		<-u.exconnch
 		clexch <- struct{}{}
 		u.Exch <- struct{}{}
 	}()
+	return nil
 }
