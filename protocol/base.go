@@ -27,8 +27,6 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/google/uuid"
-
 	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/protobase"
 )
@@ -36,9 +34,9 @@ import (
 /*
 * TODO:
 * - make uid provider configurable
-* - refactor uid provider into a package
 * - support alternative meta information ( refactor into abstract processor, pattern matching to user-provided criteria )
 * - intenral cmd flag set for management console
+* - freelist to reuse byte buffers
  */
 
 // Log is central logger
@@ -66,11 +64,12 @@ type Protocol struct {
 	protobase.EDProtocol
 	// TODO
 	//  check alignment
-	Command byte
-	Header  *bytes.Buffer
-	Encoded *bytes.Buffer
-	Meta    *ProtoMeta
-	Id      *uuid.UUID
+	Header    *bytes.Buffer
+	Encoded   *bytes.Buffer
+	Meta      *ProtoMeta
+	Id        [16]byte
+	Command   byte
+	IsEncoded bool
 }
 
 // ProtoMeta is meta information embedded

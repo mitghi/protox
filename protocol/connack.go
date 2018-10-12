@@ -25,35 +25,9 @@ package protocol
 import (
 	"bytes"
 
-	"github.com/google/uuid"
-
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol/packet"
 )
-
-// Connack is a control packet. It acknowledges the incomming connections
-// and includes a `ResultCode` which determines connection status and an
-// optional `SessionId` which should be used by the client for resuming
-// previous states.
-type Connack struct {
-	Protocol
-
-	ResultCode byte
-	SessionId  string
-	// TODO
-	// . add config fields from broker to client
-}
-
-// NewConnack returns a new `Connack` control packet.
-func NewConnack() *Connack {
-	result := &Connack{
-		Protocol:   NewProtocol(CCONNACK),
-		SessionId:  "",
-		ResultCode: 0x0,
-	}
-
-	return result
-}
 
 // Encode is a routine for encoding `Connack` packet.
 func (ca *Connack) Encode() (err error) {
@@ -73,7 +47,7 @@ func (ca *Connack) Encode() (err error) {
 	// TODO
 	// . add response options
 	if ca.Meta.HasSession {
-		flags |= RHASSESSION // 0x8
+		flags |= packet.RHASSESSION // 0x8
 	}
 	if ca.SessionId != "" {
 		flags |= 0x4
@@ -107,12 +81,12 @@ func (ca *Connack) SetResultCode(resultCode byte) {
 
 // DecodeFrom decodes a packet from `buff` argument. It is not implemented
 // because it is always the server responsibilty to send this packet.
-func (ca *Connack) DecodeFrom(buff *[]byte) (err error) {
+func (ca *Connack) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
 
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 	var (
@@ -125,14 +99,14 @@ func (ca *Connack) DecodeFrom(buff *[]byte) (err error) {
 	)
 	/* d e b u g */
 	// TODO
-	header = (*buff)[:hbnd]
+	header = buff[:hbnd]
 	opts = header[0] & 0x0f
 	hasSession, hasSessionId, cleanStart := ParseHCOptions(opts)
 	ca.Meta.HasSession = hasSession
 	ca.Meta.CleanStart = cleanStart
 	/* d e b u g */
 
-	packets = (*buff)[hbnd:]
+	packets = buff[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
 	ca.ResultCode = GetUint8(buffrd, &packetRemaining)
@@ -148,54 +122,6 @@ func (ca *Connack) DecodeFrom(buff *[]byte) (err error) {
 	return err
 }
 
-// Decode decodes the internal data. It is not implemented because
-// it is always server responsibility to send th is packet.
-func (ca *Connack) Decode() (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-
-	return err
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (ca *Connack) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (ca *Connack) String() string {
-	return ""
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (ca *Connack) UUID() (uid uuid.UUID) {
-	uid = (*ca.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (ca *Connack) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = ca.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = ca.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
-}
-
-// TODO:
-
-// func (ca *Connack) SetCode(code byte) {
-//   ca.SetCode(code)
-// }
-
-// TODO ------------------------------
-// . add options and pass it to client
-
 type ConnackOpts struct {
 	// TODO
 	optcode    byte
@@ -206,7 +132,7 @@ type ConnackOpts struct {
 }
 
 func NewConnackOpts() *ConnackOpts {
-	return &ConnackOpts{optcode: CCONNACK}
+	return &ConnackOpts{optcode: packet.CCONNACK}
 }
 
 func (ca *ConnackOpts) StateCode() protobase.OptCode {

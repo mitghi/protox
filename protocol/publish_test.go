@@ -25,12 +25,13 @@ package protocol
 import (
 	"bytes"
 	"fmt"
-	"github.com/mitghi/protox/protocol/packet"
 	"testing"
+
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestPublishAndDecode(t *testing.T) {
-	conn := NewPublish()
+	conn := NewRawPublish()
 	conn.Topic = "a/awesome/topic"
 	conn.Message = []byte("a/awesome/topic")
 	err := conn.Encode()
@@ -46,8 +47,8 @@ func TestPublishAndDecode(t *testing.T) {
 	// header boundary
 	fmt.Println("content", b, p.Data, p.Code, p.Length)
 
-	nc := NewPublish()
-	nc.DecodeFrom(p.Data)
+	nc := NewPublish(p)
+	// nc.DecodeFrom(p.Data)
 	if string(nc.Message) != string(conn.Message) {
 		t.Fatal("nc.Message!=conn.Message, expected equal")
 	}
@@ -56,17 +57,17 @@ func TestPublishAndDecode(t *testing.T) {
 
 	// length check
 	var nb bytes.Buffer
-	nb.Write((*p.Data)[1:])
+	nb.Write((p.Data)[1:])
 	dl := DecodeLength(&nb)
 	fmt.Println("dl is :", dl)
-	pl := len((*p.Data)[2:])
+	pl := len((p.Data)[2:])
 	if dl != int32(pl) {
 		t.Fatal("dl!=packLen, expected equal", dl, int32(pl))
 	}
 }
 
 func TestPublishWithQoS(t *testing.T) {
-	conn := NewPublish()
+	conn := NewRawPublish()
 	conn.Topic = "a/great/simple/topic"
 	conn.Message = []byte("a simple message")
 	conn.Meta.Qos = 0x1
@@ -78,15 +79,18 @@ func TestPublishWithQoS(t *testing.T) {
 		fmt.Printf("%#x", v)
 	}
 	packet := conn.GetPacket().(*packet.Packet)
-	conn2 := NewPublish()
-	if err := conn2.DecodeFrom(packet.Data); err != nil {
+	conn2 := NewPublish(packet)
+	if conn2 == nil {
 		fmt.Println("cannot decode the packet from old package")
 	}
+	// if err := conn2.DecodeFrom(packet.Data); err != nil {
+	// 	fmt.Println("cannot decode the packet from old package")
+	// }
 	fmt.Println("this is the data:", conn2.Message, conn2.Topic, conn2.Meta.Qos)
 }
 
 func TestDecodeRaw(t *testing.T) {
-	p := NewPublish()
+	p := NewRawPublish()
 	p.Topic = "test"
 	p.Message = []byte("test")
 	p.Meta.Qos = 1
@@ -97,8 +101,8 @@ func TestDecodeRaw(t *testing.T) {
 		fmt.Printf("%2x ", v) // b2 0e 00 01 00 04 74 65 73 74 00 04 74 65 73 74
 	}
 	np := p.Encoded.Bytes()
-	nnp := NewPublish()
-	err := nnp.DecodeFrom(&np)
+	nnp := NewRawPublish()
+	err := nnp.DecodeFrom(np)
 	if err != nil {
 		t.Fatal("err!=nil, cannot decode", err)
 	}

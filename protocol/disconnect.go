@@ -24,49 +24,30 @@ package protocol
 
 import (
 	"bytes"
-
-	"github.com/google/uuid"
-
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
 
-// Disconnect is a control packet. It temrinates the connection.
-type Disconnect struct {
-	Protocol
-}
-
-// NewDisconnect returns a new `Disconnect` control packet.
-func NewDisconnect() *Disconnect {
-	result := &Disconnect{
-		Protocol: NewProtocol(CDISCONNECT),
-	}
-
-	return result
-}
-
 // Encode is a routine for encoding `Disconnect` packet.
-func (self *Disconnect) Encode() (err error) {
+func (d *Disconnect) Encode() (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
 
-	if self.Encoded != nil {
+	if d.Encoded != nil {
 		return
 	}
 	var (
 		varHeader bytes.Buffer
 	)
-	self.Header.WriteByte(self.Command)
-	EncodeLength(int32(varHeader.Len()), self.Header)
-	self.Encoded = self.Header
+	d.Header.WriteByte(d.Command)
+	EncodeLength(int32(varHeader.Len()), d.Header)
+	d.Encoded = d.Header
 
 	return err
 }
 
 // DecodeFrom decodes a packet from `buff` argument. It is not implemented
 // because it is always the server responsibilty to send this packet.
-func (self *Disconnect) DecodeFrom(buff *[]byte) (err error) {
+func (d *Disconnect) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -74,47 +55,6 @@ func (self *Disconnect) DecodeFrom(buff *[]byte) (err error) {
 	return err
 }
 
-// Decode decodes the internal data. It is not implemented because
-// it is always server responsibility to send th is packet.
-func (self *Disconnect) Decode() (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-
-	return err
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Disconnect) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Disconnect) String() string {
+func (d *Disconnect) String() string {
 	return ""
 }
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Disconnect) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *Disconnect) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
-}
-
-// TODO:
-//
-// func (self *Disconnect) SetCode(code byte) {
-//   self.SetCode(code)
-// }

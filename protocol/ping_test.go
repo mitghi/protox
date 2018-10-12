@@ -24,12 +24,13 @@ package protocol
 
 import (
 	"fmt"
-	"github.com/mitghi/protox/protocol/packet"
 	"testing"
+
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestPing(t *testing.T) {
-	conn := NewPing()
+	conn := NewRawPing()
 	err := conn.Encode()
 	if err != nil {
 		t.Fatal("err!=nil", err)

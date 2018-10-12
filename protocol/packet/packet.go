@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package packet
 
@@ -30,19 +30,20 @@ import (
 var _ protobase.PacketInterface = (*Packet)(nil)
 
 // NewPacket crafts a new `Packet`. It is
-// the default constructor, populates the 
+// the default constructor, populates the
 // structure with the given arguments and
 // returns a pointer to it.
-func NewPacket(data *[]byte, code byte, length int) (p *Packet) {
-  return &Packet{
+func NewPacket(data []byte, code byte, length int) (p *Packet) {
+	p = &Packet{
 		Data:   data,
 		Code:   code,
 		Length: length,
 	}
+	return p
 }
 
 // SetData sets internal byte slice pointer to `data` argument.
-func (p *Packet) SetData(data *[]byte) {
+func (p *Packet) SetData(data []byte) {
 	p.Data = data
 }
 
@@ -56,16 +57,8 @@ func (p *Packet) SetLength(length int) {
 	p.Length = length
 }
 
-// IsValid returns wether a given control packet code is in the mapping or not.
-func (p *Packet) IsValid() bool {
-	if p.Code == 0 {
-		return false
-	}
-	return IsValidCommand(p.Code)
-}
-
 // GetData returns a pointer to packet data.
-func (p *Packet) GetData() *[]byte {
+func (p *Packet) GetData() []byte {
 	return p.Data
 }
 
@@ -77,6 +70,16 @@ func (p *Packet) GetCode() byte {
 // GetLength returns bytes total size.
 func (p *Packet) GetLength() int {
 	return p.Length
+}
+
+// IsValid returns wether a given control packet code is in the mapping or not.
+func (p *Packet) IsValid() bool {
+	// TODO
+	// . 0x0 cmd is handled in protocodes
+	if p.Code == 0 {
+		return false
+	}
+	return IsValidCommand(p.Code)
 }
 
 // IsValidCommand returns wether a packet code is in the mapping or is invalid.

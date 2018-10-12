@@ -27,6 +27,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 // Protox Error messages
@@ -57,7 +59,7 @@ func RaiseError(err error) {
 
 // RecoverError catches `panic` inflight and handles them accordingly.
 // Using this function must be as follow:
-//  func panicableFunc(buff *[]byte) (err error) {
+//  func panicableFunc(buff []byte) (err error) {
 //    defer func() {
 //      err = RecoverError(err, recover())
 //    }()
@@ -209,9 +211,9 @@ func EncodeLength(length int32, buf *bytes.Buffer) {
 
 // GetHeaderBoundary reads the header part of a packet and writes it to a
 // byte slice pointer given by `buf` argument, then returns header length.
-func GetHeaderBoundary(buf *[]byte) int {
+func GetHeaderBoundary(buf []byte) int {
 	lenLen := 1
-	for (*buf)[lenLen]&0x80 != 0 {
+	for buf[lenLen]&0x80 != 0 {
 		lenLen += 1
 	}
 	lenLen += 1
@@ -274,9 +276,9 @@ func CreateHOpts(qos byte, dup, ret bool) byte {
 }
 
 // calcMinQoS returns a feasible QoS value.
-func calcMinQoS(prev, nev byte) byte {
-	if prev > MAXQoS || nev > MAXQoS {
-		return MAXQoS
+func calcMinQoS(prev byte, nev byte) byte {
+	if prev > packet.MAXQoS || nev > packet.MAXQoS {
+		return packet.MAXQoS
 	}
 	if nev <= prev {
 		return nev

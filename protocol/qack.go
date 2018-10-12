@@ -24,31 +24,7 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/google/uuid"
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
-
-const (
-	QAcNone byte = iota
-	QAcOK
-	QAcERR
-)
-
-type QAck struct {
-	Protocol
-
-	Code byte
-}
-
-func NewQAck() *QAck {
-	return &QAck{
-		Protocol: NewProtocol(CQUEUEACK),
-		Code:     QAcNone,
-	}
-}
 
 func (qa *QAck) Encode() (err error) {
 	defer func() {
@@ -69,52 +45,18 @@ func (qa *QAck) Encode() (err error) {
 	return err
 }
 
-func (qa *QAck) Decode() (err error) {
+func (qa *QAck) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
-	return err
-}
-
-func (qa *QAck) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 	var (
 		hbnd   int    = GetHeaderBoundary(buff)
-		header []byte = (*buff)[:hbnd]
+		header []byte = buff[:hbnd]
 	)
 	qa.Code = (header[0] & 0x0F)
 
 	return err
-}
-
-func (qa *QAck) Metadata() *ProtoMeta {
-	return nil
-}
-
-func (qa *QAck) String() string {
-	return fmt.Sprintf("%+v", *qa)
-}
-
-func (qa *QAck) UUID() (uid uuid.UUID) {
-	uid = (*qa.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (qa *QAck) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = qa.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = qa.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }

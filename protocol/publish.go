@@ -24,133 +24,67 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/google/uuid"
-
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
 
 //
-type Publish struct {
-	Protocol
-
-	Topic   string
-	Message []byte
-}
-
-//
-func NewPublish() *Publish {
-	return &Publish{
-		Protocol: NewProtocol(CPUBLISH),
-		Topic:    "",
-	}
-}
-
-//
-func (self *Publish) Encode() (err error) {
+func (p *Publish) Encode() (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
-	if self.Encoded != nil {
+	if p.Encoded != nil {
 		return err
 	}
-
 	var (
 		varHeader bytes.Buffer
 		payload   bytes.Buffer
-		opts      byte = CreateHOpts(self.Meta.Qos, self.Meta.Dup, self.Meta.Ret)
+		opts      byte = CreateHOpts(p.Meta.Qos, p.Meta.Dup, p.Meta.Ret)
 		// combine 0xF0 and 0x0F masks
-		cmd byte = self.Command | opts
+		cmd byte = p.Command | opts
 	)
-	self.Header.WriteByte(cmd)
-	if self.Meta.Qos > 0 {
-		SetUint16(self.Meta.MessageId, &varHeader)
+	p.Header.WriteByte(cmd)
+	if p.Meta.Qos > 0 {
+		SetUint16(p.Meta.MessageId, &varHeader)
 	}
-
-	SetString(self.Topic, &varHeader)
-	SetBytes(self.Message, &payload)
+	SetString(p.Topic, &varHeader)
+	SetBytes(p.Message, &payload)
 	varHeader.ReadFrom(&payload)
-
-	// payload.Write(self.Message)
-	// SetString(self.Message, &varHeader)
-	EncodeLength(int32(varHeader.Len()), self.Header)
-	self.Header.Write(varHeader.Bytes())
-	self.Encoded = self.Header
+	EncodeLength(int32(varHeader.Len()), p.Header)
+	p.Header.Write(varHeader.Bytes())
+	p.Encoded = p.Header
 
 	return err
 }
 
 //
-func (self *Publish) Decode() (err error) {
+func (p *Publish) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
-	return err
-}
-
-//
-func (self *Publish) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 	var (
 		hbnd            int    = GetHeaderBoundary(buff)
-		header          []byte = (*buff)[:hbnd]
+		header          []byte = buff[:hbnd]
+		buffrd          *bytes.Reader
 		dup             bool
 		ret             bool
 		qos             byte
-		packets         []byte //packet section
+		packets         []byte
 		packetRemaining int32
-		buffrd          *bytes.Reader //end
 	)
 	dup, ret, qos = ParseHOptions(header[0] & 0x0F)
-	self.Meta.Dup, self.Meta.Ret, self.Meta.Qos = dup, ret, qos
-	packets = (*buff)[hbnd:]
+	p.Meta.Dup, p.Meta.Ret, p.Meta.Qos = dup, ret, qos
+	packets = buff[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
-	if self.Meta.Qos > 0 {
-		self.Meta.MessageId = GetUint16(buffrd, &packetRemaining)
+	if p.Meta.Qos > 0 {
+		p.Meta.MessageId = GetUint16(buffrd, &packetRemaining)
 	}
 	topic := GetString(buffrd, &packetRemaining)
-	self.Topic = topic
+	p.Topic = topic
 	message := GetBytes(buffrd, &packetRemaining)
-	self.Message = message
+	p.Message = message
 
 	return err
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Publish) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Publish) String() string {
-	return fmt.Sprintf("%+v", *self)
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Publish) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *Publish) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }

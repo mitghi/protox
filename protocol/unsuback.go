@@ -24,63 +24,36 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/google/uuid"
-
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
 
 //
-type Unsuback struct {
-	Protocol
-}
-
-//
-func NewUnsuback() *Unsuback {
-	return &Unsuback{
-		Protocol: NewProtocol(CUNSUBACK),
-	}
-}
-
-//
-func (self *Unsuback) Encode() (err error) {
+func (ua *Unsuback) Encode() (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
 
-	if self.Encoded != nil {
+	if ua.Encoded != nil {
 		return err
 	}
 
 	var (
 		varHeader bytes.Buffer
 	)
-	self.Header.WriteByte(self.Command)
-	SetUint16(self.Meta.MessageId, &varHeader)
-	EncodeLength(int32(varHeader.Len()), self.Header)
-	self.Header.Write(varHeader.Bytes())
-	self.Encoded = self.Header
+	ua.Header.WriteByte(ua.Command)
+	SetUint16(ua.Meta.MessageId, &varHeader)
+	EncodeLength(int32(varHeader.Len()), ua.Header)
+	ua.Header.Write(varHeader.Bytes())
+	ua.Encoded = ua.Header
 
 	return err
 }
 
 //
-func (self *Unsuback) Decode() (err error) {
+func (ua *Unsuback) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
-	return err
-}
-
-//
-func (self *Unsuback) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 	var (
@@ -90,40 +63,11 @@ func (self *Unsuback) DecodeFrom(buff *[]byte) (err error) {
 		buffrd          *bytes.Reader
 		code            uint16
 	)
-	packets = (*buff)[hbnd:]
+	packets = buff[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
 	code = GetUint16(buffrd, &packetRemaining)
-	self.Meta.MessageId = code
+	ua.Meta.MessageId = code
 
 	return err
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Unsuback) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Unsuback) String() string {
-	return fmt.Sprintf("%+v", *self)
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Unsuback) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *Unsuback) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }

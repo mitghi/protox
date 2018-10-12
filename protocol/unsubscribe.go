@@ -24,28 +24,7 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/google/uuid"
-
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
-
-//
-type UnSubscribe struct {
-	Protocol
-
-	Topic string
-}
-
-//
-func NewUnSubscribe() *UnSubscribe {
-	return &UnSubscribe{
-		Protocol: NewProtocol(CUNSUBSCRIBE),
-		Topic:    "",
-	}
-}
 
 //
 func (self *UnSubscribe) Encode() (err error) {
@@ -88,26 +67,17 @@ func (self *UnSubscribe) Encode() (err error) {
 }
 
 //
-func (c *UnSubscribe) Decode() (err error) {
+func (self *UnSubscribe) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
 
-	return err
-}
-
-//
-func (self *UnSubscribe) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 	var (
 		hbnd   int    = GetHeaderBoundary(buff)
-		header []byte = (*buff)[:hbnd]
+		header []byte = buff[:hbnd]
 		dup    bool
 		ret    bool
 		qos    byte
@@ -119,7 +89,7 @@ func (self *UnSubscribe) DecodeFrom(buff *[]byte) (err error) {
 	)
 	dup, ret, qos = ParseHOptions(header[0] & 0x0F)
 	self.Meta.Dup, self.Meta.Ret, self.Meta.Qos = dup, ret, qos
-	packets = (*buff)[hbnd:]
+	packets = buff[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
 	if self.Meta.Qos > 0 {
@@ -129,33 +99,4 @@ func (self *UnSubscribe) DecodeFrom(buff *[]byte) (err error) {
 	self.Topic = topic
 
 	return err
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *UnSubscribe) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *UnSubscribe) String() string {
-	return fmt.Sprintf("%+v", *self)
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *UnSubscribe) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *UnSubscribe) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }

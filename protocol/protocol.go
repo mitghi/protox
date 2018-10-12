@@ -24,9 +24,29 @@ package protocol
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protocol/packet"
 )
+
+// Ensure protocol (interface) conformance.
+var (
+	_ protobase.EDProtocol = (*Protocol)(nil)
+)
+
+var (
+	NewUUID func() [16]byte = createUUID
+)
+
+func createUUID() [16]byte {
+	// TODO:
+	// . handle error
+	var uid uuid.UUID
+	uid, _ = uuid.NewUUID()
+	return uid
+}
 
 // NewProtoMeta returns a pointer to a new `ProtoMeta` which includes metadata
 // related to a control packet such as qulity of service and message id.
@@ -45,16 +65,48 @@ func NewProtoMeta() *ProtoMeta {
 // NewProtocol returns a new `Protocol` struct. It contains
 // neccessary information for header, command code, metadata and ... .
 func NewProtocol(code byte) Protocol {
-	var uid uuid.UUID
-	uid, _ = uuid.NewUUID()
-	var result Protocol = Protocol{
+	var p Protocol = Protocol{
 		Command: code,
 		Header:  &bytes.Buffer{},
 		Encoded: nil,
 		Meta:    NewProtoMeta(),
-		Id:      &uid,
+		Id:      NewUUID(),
 	}
-	return result
+	return p
+}
+
+func (p *Protocol) Decode() (err error) {
+	defer func() {
+		err = RecoverError(err, recover())
+	}()
+
+	return err
+}
+
+func (p *Protocol) Metadata() *ProtoMeta {
+	return nil
+}
+
+// GetPacket creates a pointer to a new `Packet` created by using
+// internal `Encoded` data.
+func (p *Protocol) GetPacket() protobase.PacketInterface {
+	var (
+		data []byte         = p.Encoded.Bytes()
+		dlen int            = len(data)
+		code byte           = p.Command
+		pckt *packet.Packet = packet.NewPacket(data, code, dlen)
+	)
+
+	return pckt
+}
+
+func (p *Protocol) UUID() (uid [16]byte) {
+	uid = p.Id
+	return uid
+}
+
+func (p *Protocol) String() string {
+	return fmt.Sprintf("%+v", *p)
 }
 
 // MessageId is a receiver method which returns an `uint16`
@@ -71,6 +123,25 @@ func (p *Protocol) MessageId() (bool, uint16) {
 // as protocol command identifier associated with the Packet.
 func (p *Protocol) CommandCode() byte {
 	return p.Command
+}
+
+// GetBytes returns raw data.
+func (p *Protocol) GetBytes() []byte {
+	if p.Encoded == nil {
+		return nil
+	}
+	return p.Encoded.Bytes()
+}
+
+func (p *Protocol) Encode() (err error) {
+	defer func() {
+		err = RecoverError(err, recover())
+	}()
+	if p.Encoded != nil {
+		p.IsEncoded = true
+	}
+	p.IsEncoded = false
+	return err
 }
 
 // ParseHOptions is a function that parses first 0x0F

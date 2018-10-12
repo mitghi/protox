@@ -1,4 +1,4 @@
-package protocol
+package packet
 
 // Maximum supported Quality of Service
 const (
@@ -54,33 +54,33 @@ const (
 	RCLEANSTART = 0x04
 )
 
-// Control packet raw codes
-const (
-	PNULL        = 0x00
-	PCONNECT     = 0x01
-	PCONNACK     = 0x02
-	PQUEUE       = 0x04
-	PQUEUEACK    = 0x05
-	PPUBACK      = 0x06
-	PSUBSCRIBE   = 0x07
-	PSUBACK      = 0x08
-	PUNSUBSCRIBE = 0x09
-	PUNSUBACK    = 0x0A
-	PPUBLISH     = 0x0B
-	PPING        = 0x0C
-	PPONG        = 0x0D
-	PDISCONNECT  = 0x0E
-	// TODO
-	//  PRESACK      = 0x06
-	// NOTE: new control codes should be included
-	//
-	// RREQUEST
-	// RRESPONSE
-	// RREQBCST
-	// REQRBCST
-	// PPROPOS
-	// PRPROPS
-	// PRESPONSE    = 0x03
-	// PREQACK      = 0x04
-	// PREQUEST     = 0x05
-)
+// // Control packet raw codes
+// const (
+// 	PNULL        = 0x00
+// 	PCONNECT     = 0x01
+// 	PCONNACK     = 0x02
+// 	PQUEUE       = 0x04
+// 	PQUEUEACK    = 0x05
+// 	PPUBACK      = 0x06
+// 	PSUBSCRIBE   = 0x07
+// 	PSUBACK      = 0x08
+// 	PUNSUBSCRIBE = 0x09
+// 	PUNSUBACK    = 0x0A
+// 	PPUBLISH     = 0x0B
+// 	PPING        = 0x0C
+// 	PPONG        = 0x0D
+// 	PDISCONNECT  = 0x0E
+// 	// TODO
+// 	//  PRESACK      = 0x06
+// 	// NOTE: new control codes should be included
+// 	//
+// 	// RREQUEST
+// 	// RRESPONSE
+// 	// RREQBCST
+// 	// REQRBCST
+// 	// PPROPOS
+// 	// PRPROPS
+// 	// PRESPONSE    = 0x03
+// 	// PREQACK      = 0x04
+// 	// PREQUEST     = 0x05
+// )

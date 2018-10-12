@@ -24,18 +24,20 @@ package protocol
 
 import (
 	"fmt"
-	"github.com/mitghi/protox/protocol/packet"
 	"testing"
+
+	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/protocol/packet"
 )
 
 func TestConnack(t *testing.T) {
-	c := NewConnack()
+	c := NewRawConnack()
 	c.Meta.HasSession = true
-	c.ResultCode = RESPFAIL
+	c.ResultCode = protobase.RESPFAIL
 	c.Encode()
 
 	np := c.GetPacket().(*packet.Packet)
-	nc := NewConnack()
+	nc := NewRawConnack()
 	if err := nc.DecodeFrom(np.Data); err != nil {
 		t.Fatal("err!=nil, expected nil. Unable to decode packet.")
 	}

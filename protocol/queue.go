@@ -27,39 +27,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
-
-const (
-	QAInitialize protobase.QAction = iota
-	QADestroy
-	QADrain
-	QANone
-)
-
-type Queue struct {
-	Protocol
-
-	Message    []byte
-	Mark       []byte
-	Address    string
-	ReturnPath string
-	Action     protobase.QAction
-}
-
-// - MARK: Initializers.
-
-func NewQueue() *Queue {
-	return &Queue{
-		Protocol:   NewProtocol(CQUEUE),
-		Address:    "",
-		ReturnPath: "",
-		Action:     QANone,
-	}
-}
 
 // - MARK: Queue section.
 
@@ -205,26 +174,17 @@ func (q *Queue) Encode() (err error) {
 }
 
 //
-func (q *Queue) Decode() (err error) {
+func (q *Queue) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
-
-	return err
-}
-
-//
-func (q *Queue) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-	if len(*buff) == 0 {
+	if len(buff) == 0 {
 		return InvalidHeader
 	}
 
 	var (
 		hbnd            int    = GetHeaderBoundary(buff)
-		header          []byte = (*buff)[:hbnd]
+		header          []byte = buff[:hbnd]
 		isDuplicate     bool   = false
 		hasOpts         bool   = false
 		hasPayload      bool   = false
@@ -241,7 +201,7 @@ func (q *Queue) DecodeFrom(buff *[]byte) (err error) {
 
 	hasOpts, isDuplicate, hasPayload = ParseQOptions(header[0] & 0x0F)
 	q.Meta.Dup = isDuplicate
-	packets = (*buff)[hbnd:]
+	packets = buff[hbnd:]
 	buffrd = bytes.NewReader(packets)
 	packetRemaining = int32(len(packets))
 	if hasOpts {
@@ -268,30 +228,4 @@ func (q *Queue) DecodeFrom(buff *[]byte) (err error) {
 	}
 
 	return err
-}
-
-func (q *Queue) Metadata() *ProtoMeta {
-	return nil
-}
-
-func (q *Queue) String() string {
-	return fmt.Sprintf("%+v", *q)
-}
-
-func (q *Queue) UUID() (uid uuid.UUID) {
-	uid = (*q.Protocol.Id)
-	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (q *Queue) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = q.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = q.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }

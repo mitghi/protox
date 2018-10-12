@@ -24,30 +24,7 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
-
-	"github.com/google/uuid"
-
-	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
-
-type Ping struct {
-	Protocol
-}
-
-type Pong struct {
-	Protocol
-}
-
-// NewPing returns a new Ping control packet. It is not the responsibility of broker to send
-// ping control packets ( it is for client ).
-func NewPing() *Ping {
-	result := &Ping{
-		Protocol: NewProtocol(CPING),
-	}
-	return result
-}
 
 func (self *Ping) Encode() (err error) {
 	defer func() {
@@ -68,15 +45,7 @@ func (self *Ping) Encode() (err error) {
 	return err
 }
 
-func (self *Ping) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-
-	return err
-}
-
-func (self *Ping) Decode() (err error) {
+func (self *Ping) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -85,42 +54,9 @@ func (self *Ping) Decode() (err error) {
 }
 
 // TODO: complete this function, this is a stub implementation.
-func (self *Ping) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Ping) String() string {
-	return fmt.Sprintf("%+v", *self)
-
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Ping) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
+func (self *Ping) UUID() (uid [16]byte) {
+	uid = (self.Protocol.Id)
 	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *Ping) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
-}
-
-// NewPong returns a pointer to a new `Pong` packet.
-func NewPong() *Pong {
-	result := &Pong{
-		Protocol: NewProtocol(CPONG),
-	}
-
-	return result
 }
 
 //
@@ -143,16 +79,7 @@ func (self *Pong) Encode() (err error) {
 }
 
 //
-func (self *Pong) DecodeFrom(buff *[]byte) (err error) {
-	defer func() {
-		err = RecoverError(err, recover())
-	}()
-
-	return err
-}
-
-//
-func (self *Pong) Decode() (err error) {
+func (self *Pong) DecodeFrom(buff []byte) (err error) {
 	defer func() {
 		err = RecoverError(err, recover())
 	}()
@@ -161,30 +88,7 @@ func (self *Pong) Decode() (err error) {
 }
 
 // TODO: complete this function, this is a stub implementation.
-func (self *Pong) Metadata() *ProtoMeta {
-	return nil
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Pong) String() string {
-	return fmt.Sprintf("%+v", *self)
-}
-
-// TODO: complete this function, this is a stub implementation.
-func (self *Pong) UUID() (uid uuid.UUID) {
-	uid = (*self.Protocol.Id)
+func (self *Pong) UUID() (uid [16]byte) {
+	uid = (self.Protocol.Id)
 	return uid
-}
-
-// GetPacket creates a pointer to a new `Packet` created by using
-// internal `Encoded` data.
-func (self *Pong) GetPacket() protobase.PacketInterface {
-	var (
-		data []byte         = self.Encoded.Bytes()
-		dlen int            = len(data)
-		code byte           = self.Command
-		pckt *packet.Packet = packet.NewPacket(&data, code, dlen)
-	)
-
-	return pckt
 }
