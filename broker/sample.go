@@ -60,20 +60,20 @@ func (cls *ClientStore) Get(cid string) protobase.ClientInterface {
 // and Proposals are delivered by calling delegate routines on the structure returned by this function.
 // It will reuse the memory if a client struct is already in the storage, otherwise it allocate and
 // returns a new one.
-func (self *Broker) clientDelegate(username string, password string, cid string) protobase.ClientInterface {
+func (b *Broker) clientDelegate(username string, password string, cid string) protobase.ClientInterface {
 	logger.Debug("* [clientDelegate] client ", username, " joined.")
-	if ret := self.clientstore.Get(username); ret != nil {
+	if ret := b.clientstore.Get(username); ret != nil {
 		logger.Debug("** [clientDelegate] reusing existing struct for client: ", username)
 		return ret
 	}
 	var cl *client.Client = client.NewClient(username, password, cid)
-	self.clientstore.Add(username, cl)
+	b.clientstore.Add(username, cl)
 	return cl
 }
 
 // ConnectionDeleagte creates a new connection for each new client
 // and returns a compatible structure with `protocol.ProtoConnection` interface.
-func (self *Broker) connectionDelegate(cl net.Conn) protobase.ProtoConnection {
+func (b *Broker) connectionDelegate(cl net.Conn) protobase.ProtoConnection {
 	var proto *networking.Connection = networking.NewConnection(cl)
 	return proto
 }
