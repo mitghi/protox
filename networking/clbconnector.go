@@ -159,7 +159,7 @@ func (clbc *CLBConnection) SendMessage(pb protobase.MsgInterface) (err error) {
 	msg.Topic = topic
 	if qos > 0 {
 		logger.FDebug(fn, "* [QoS] QoS>0 in [SendMessage].", "qos", qos)
-		puid = (*msg.Id)
+		puid = (msg.Id)
 		logger.FDebugf(fn, "* [SendMessage] publish QoS(%b), message direction(%b).", pb.QoS(), pb.Dir())
 		if !clbc.storage.AddOutbound(msg) {
 			logger.Warn("- [SendMessage ]unable to add outbound message.")
@@ -666,7 +666,7 @@ func (clbc *CLBConnection) Publish(topic string, message []byte, qos byte, fn fu
 		idstore protobase.MSGIDInterface
 	)
 	logger.FDebugf(_fn, "* [Publish/QoS][CLBConnection] qos is (%b) [Topic] is (%s) [Message] is (%s).", qos, topic, message)
-	puid = (*pb.Id)
+	puid = (pb.Id)
 	// set topic and message
 	pb.Topic = topic
 	pb.Message = message
@@ -715,7 +715,7 @@ func (clbc *CLBConnection) Subscribe(topic string, qos byte, fn func(protobase.O
 		packet  *Packet                                                     // empty packet for manipulating
 	)
 	logger.FDebugf(_fn, "* [Subscribe/QoS] qos is (%b) [Topic] is (%s).", qos, topic)
-	puid = (*sb.Id)
+	puid = (sb.Id)
 	// set the topic
 	sb.Topic = topic
 	if qos > 0 {

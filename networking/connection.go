@@ -231,7 +231,7 @@ func (c *Connection) SendMessage(pb protobase.MsgInterface, isOwner bool) (err e
 	msg.Topic = topic
 	if qos > 0 {
 		logger.FDebug(fn, "* [QoS] QoS>0 in [SendMessage].", "qos", qos)
-		puid = (*msg.Id)
+		puid = (msg.Id)
 		logger.FDebug("SendMessage", "Publish QoS.", qos, "msgdir", pb.Dir())
 		if !c.storage.AddOutbound(clid, msg) {
 			logger.Warn("- [MessageStore] unable to add outbound message in [SendMessage].")
