@@ -22,6 +22,9 @@
 
 package protobase
 
+// TODO
+// . move these constants to their own package
+
 const (
 	IdentWLCD string = "*"  // wildcard identifer
 	TOPICWLCD        = "/*" // topic with wildcard identifier
@@ -29,6 +32,8 @@ const (
 	Wlcd             = "*"  // wildcard lietral
 )
 
+// TODO:
+// . update user types to a singleton
 // User Types
 const (
 	AuthUserNormal AuthUserType = "User"

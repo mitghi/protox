@@ -109,6 +109,10 @@ type OptionInterface interface {
 // This is important for QoS > 0 levels as acknowledgments shall be sent either
 // from Broker->Client or Client->Broker. It also provides UUID and persistency.
 
+// MSGIDInterface provides identifier storage
+// used in inbound/outbound messages for
+// retrieval of packets and identification
+// of messsage sequence.
 type MSGIDInterface interface {
 	GetNewID(uuid.UUID) uint16
 	IsOccupied(uint16) bool
@@ -135,7 +139,7 @@ type MessageStorage interface {
 	Close(client string) bool
 }
 
-//
+// MessageBox is the packet storage interface.
 type MessageBox interface {
 	AddInbound(msg EDProtocol) bool
 	AddOutbound(msg EDProtocol) bool
@@ -170,7 +174,8 @@ type ClientInterface interface {
 	//   e.g. SetAuthMechanism()
 }
 
-//
+// CLBUserInterface is the requirement for
+// implementing Client-to-Broker user.
 type CLBUserInterface interface {
 	IsRunning() bool
 	IsConnected() bool
@@ -178,8 +183,8 @@ type CLBUserInterface interface {
 	SetRunning(bool)
 	SetConnected(bool)
 	Setup() error
-	Connect()
-	Disconnect()
+	Connect() error
+	Disconnect() error
 }
 
 // ServerInterface is the interface that must be implemented by subsystems
@@ -207,59 +212,77 @@ type ServerInterface interface {
 	Setup()
 }
 
-// PacketInterface is a interface to access
-// low level packet data.
+// RouterInterface is high level interface requirement
+// corresponding to the component in charge for purpose
+// of handling hierarchical topics and its relevant
+// mapping.
+type RouterInterface interface {
+	Add(string, string, byte)
+	Find(string) (map[string]byte, error)
+	Remove(string, string) error
+}
+
+// PacketInterface is low level interface for
+// accessing and manipulating packet content.
 type PacketInterface interface {
-	SetData(*[]byte)
+	SetData([]byte)
 	SetCode(byte)
 	SetLength(int)
-	GetData() *[]byte
+	GetData() []byte
 	GetCode() byte
 	GetLength() int
 	IsValid() bool
 }
 
-// EDProtocol is a interface used for PDU ( protocol data units ).
+type ProtoPacket interface {
+	Data() []byte
+}
+
+// EDProtocol is a interface used for
+// PDU ( protocol data units ).
 type EDProtocol interface {
 	Encode() error
 	Decode() error
-	DecodeFrom(buff *[]byte) error
+	DecodeFrom(buff []byte) error
 	String() string
-	UUID() uuid.UUID
+	UUID() [16]byte
 	MessageId() (bool, uint16)
 	CommandCode() byte
 	GetPacket() PacketInterface
+	GetBytes() []byte
 	// Metadata() *ProtoMeta
 	// TODO:
 	// . SetCode(code byte)
 	// . implement io.Reader and io.Writer
 }
 
-// ProtocolConnection is the main interface used by servers. It handles most of
-// the logics neccessary for handling low level details ( such as parsing and crafting
-// control packets, timeouts, send/receive and ... ).
+// TODO:
+// type ProtoMetaInterface interface {
+// 	Serialize() []byte
+// }
+
+// ProtocolConnection is server side protocol
+// connection interface. It provides business
+// layer logic through required methods.
 type ProtoConnection interface {
-	Handle()
+	Handle() // main procedure, execution routine
 
-	SetServer(sv ServerInterface)
-	SetAuthenticator(auth AuthInterface)
-	SetClientDelegate(cl func(string, string, string) ClientInterface)
-	SetMessageStorage(store MessageStorage)
-	SetHeartBeat(heartbeat int)
-	SetInitiateTimeout(timeout int)
-	SetStatus(uint32)
-	SetNetConnection(net.Conn)
-	SetPermissionDelegate(cl func(AuthInterface, ...string) bool)
-
-	SendMessage(MsgInterface, bool)
-
-	GetConnection() net.Conn
-	GetClient() ClientInterface
-	GetStatus() uint32
-	GetErrChan() chan struct{}
-
-	IsClean() bool
-	SendRedelivery(EDProtocol)
+	SetServer(sv ServerInterface)                                      // server instance
+	SetAuthenticator(auth AuthInterface)                               // auth subsystem
+	SetClientDelegate(cl func(string, string, string) ClientInterface) // client constructor
+	SetMessageStorage(store MessageStorage)                            // data structure for storing packets and sequencing ids
+	SetHeartBeat(heartbeat int)                                        // max idle threshold
+	SetInitiateTimeout(timeout int)                                    // initial authorization/validation deadline
+	SetStatus(uint32)                                                  // set status on connection struct
+	SetNetConnection(net.Conn)                                         // set network connection ( socket )
+	SetPermissionDelegate(cl func(AuthInterface, ...string) bool)      // permission subsystem
+	SendMessage(MsgInterface, bool) error                              // write message to remote destination
+	SendRedelivery(EDProtocol) error                                   // redeliver packet to its destination
+	GetConnection() net.Conn                                           // access underlying network connection ( socket )
+	GetClient() ClientInterface                                        // access client structure
+	GetStatus() uint32                                                 // get connection status
+	GetErrChan() chan struct{}                                         // access error channel
+	IsClean() bool                                                     // whether connection struct is reused
 
 	// TODO
 	// SendPublish(MsgInterface)
@@ -284,7 +307,7 @@ type ProtoClientConnection interface {
 	GetErrChan() chan struct{}
 	GetTermChan() chan struct{}
 
-	SendMessage(MsgInterface)
+	SendMessage(MsgInterface) error
 	SendRedelivery()
 
 	MakeEnvelope(route string, payload []byte, qos byte, messageId uint16, dir MsgDir) MsgInterface
@@ -328,10 +351,10 @@ type LoggerInterface interface {
 	Debugf(string, ...interface{})
 	Info(string, ...interface{})
 	Infof(string, ...interface{})
-	Warn(string, ...interface{}) error
-	Warnf(string, ...interface{}) error
-	Error(string, ...interface{}) error
-	Errorf(string, ...interface{}) error
+	Warn(string, ...interface{})
+	Warnf(string, ...interface{})
+	Error(string, ...interface{})
+	Errorf(string, ...interface{})
 	Fatal(string, ...interface{})
 	Fatalf(string, ...interface{})
 	Log(int, string, []interface{})
@@ -345,10 +368,10 @@ type LoggingInterface interface {
 	FInfof(string, string, ...interface{})
 	FDebug(string, string, ...interface{})
 	FDebugf(string, string, ...interface{})
-	FWarn(string, string, ...interface{}) error
-	FWarnf(string, string, ...interface{}) error
-	FError(string, string, ...interface{}) error
-	FErrorf(string, string, ...interface{}) error
+	FWarn(string, string, ...interface{})
+	FWarnf(string, string, ...interface{})
+	FError(string, string, ...interface{})
+	FErrorf(string, string, ...interface{})
 	FFatal(string, string, ...interface{})
 	FFatalf(string, string, ...interface{})
 	FTrace(int, string, string, ...interface{})
