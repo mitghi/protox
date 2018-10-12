@@ -119,7 +119,7 @@ func (self *MessageStore) AddInbound(client string, msg protobase.EDProtocol) bo
 		self.RUnlock()
 		return false
 	}
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.in[client].Lock()
 	if _, ok := self.in[client].messages[cid]; ok == true {
 		self.in[client].Unlock()
@@ -142,7 +142,7 @@ func (self *MessageStore) AddOutbound(client string, msg protobase.EDProtocol) b
 		self.RUnlock()
 		return false
 	}
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.out[client].Lock()
 	if _, ok := self.out[client].messages[cid]; ok == true {
 		self.out[client].Unlock()
@@ -165,7 +165,7 @@ func (self *MessageStore) DeleteIn(client string, msg protobase.EDProtocol) bool
 		self.RUnlock()
 		return false
 	}
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.in[client].Lock()
 	if _, ok := self.in[client].messages[cid]; ok == false {
 		self.in[client].Unlock()
@@ -188,7 +188,7 @@ func (self *MessageStore) DeleteOut(client string, msg protobase.EDProtocol) boo
 		self.RUnlock()
 		return false
 	}
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.out[client].Lock()
 	if _, ok := self.out[client].messages[cid]; ok == false {
 		self.out[client].Unlock()
@@ -244,7 +244,7 @@ func (self *MessageStore) GetAllOut(client string) (msgs []protobase.EDProtocol)
 	order := self.out[client].order
 	sort.Slice(msgs, func(i, j int) bool {
 		a, b := msgs[i], msgs[j]
-		astr, bstr := a.UUID().String(), b.UUID().String()
+		astr, bstr := uidstr(a), uidstr(b)
 		return order[astr] < order[bstr]
 	})
 

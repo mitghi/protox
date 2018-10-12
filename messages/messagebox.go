@@ -63,11 +63,17 @@ func NewMessageBox() *MessageBox {
 	return result
 }
 
+var uidstr func(protobase.EDProtocol) string = func(msg protobase.EDProtocol) string {
+	return uuid.UUID(msg.UUID()).String()
+}
+
 func (self *MessageBox) AddInbound(msg protobase.EDProtocol) bool {
 	self.RLock()
 	defer self.RUnlock()
 
-	var cid string = msg.UUID().String()
+	var (
+		cid string = uidstr(msg)
+	)
 
 	self.in.Lock()
 
@@ -84,7 +90,7 @@ func (self *MessageBox) AddInbound(msg protobase.EDProtocol) bool {
 
 func (self *MessageBox) AddOutbound(msg protobase.EDProtocol) bool {
 	self.RLock()
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.out.Lock()
 
 	if _, ok := self.out.messages[cid]; ok == true {
@@ -103,7 +109,7 @@ func (self *MessageBox) AddOutbound(msg protobase.EDProtocol) bool {
 
 func (self *MessageBox) DeleteIn(msg protobase.EDProtocol) bool {
 	self.RLock()
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.in.Lock()
 
 	if _, ok := self.in.messages[cid]; ok == false {
@@ -123,7 +129,7 @@ func (self *MessageBox) DeleteIn(msg protobase.EDProtocol) bool {
 // DeleteOut disassociates a client from a outgoing packet.
 func (self *MessageBox) DeleteOut(msg protobase.EDProtocol) bool {
 	self.RLock()
-	var cid string = msg.UUID().String()
+	var cid string = uidstr(msg)
 	self.out.Lock()
 
 	if _, ok := self.out.messages[cid]; ok == false {
@@ -151,7 +157,7 @@ func (self *MessageBox) GetAllOut() (msgs []protobase.EDProtocol) {
 	order := self.out.order
 	sort.Slice(msgs, func(i, j int) bool {
 		a, b := msgs[i], msgs[j]
-		astr, bstr := a.UUID().String(), b.UUID().String()
+		astr, bstr := uidstr(a), uidstr(b)
 		return order[astr] < order[bstr]
 	})
 
@@ -166,8 +172,7 @@ func (self *MessageBox) GetAllOutStr() (msgs []string) {
 	self.out.Lock()
 
 	for _, msg := range self.out.messages {
-		var uid uuid.UUID = msg.UUID()
-		var sid string = uid.String()
+		var sid string = uidstr(msg)
 		msgs = append(msgs, sid)
 	}
 

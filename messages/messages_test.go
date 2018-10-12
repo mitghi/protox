@@ -82,7 +82,7 @@ func TestInsertInbound(t *testing.T) {
 	var pckt *protocol.Ping
 
 	store.AddClient(DEFCLN)
-	pckt = protocol.NewPing()
+	pckt = protocol.NewRawPing()
 	if ok := store.AddInbound(DEFCLN, pckt); !ok {
 		t.Fatalf(EADD, DEFCLN, " INBOUND ")
 	}
@@ -102,7 +102,7 @@ func TestInsertOutbound(t *testing.T) {
 	var pckt *protocol.Pong
 
 	store.AddClient(DEFCLN)
-	pckt = protocol.NewPong()
+	pckt = protocol.NewRawPong()
 	if ok := store.AddOutbound(DEFCLN, pckt); !ok {
 		t.Fatalf(EADD, DEFCLN, " OUTBOUND ")
 	}
@@ -130,7 +130,7 @@ func TestGetAllOut(t *testing.T) {
 		store.AddClient(clname)
 		clnames[clname] = make([]string, 0, 5)
 		for j := 0; j < 5; j++ {
-			var pckt *protocol.Pong = protocol.NewPong()
+			var pckt *protocol.Pong = protocol.NewRawPong()
 			var uid uuid.UUID = pckt.UUID()
 			var sid string = uid.String()
 			clnames[clname] = append(clnames[clname], sid)
@@ -176,7 +176,7 @@ func TestDeleteIn(t *testing.T) {
 
 	store.AddClient(DEFCLN)
 	for i := 0; i < 5; i++ {
-		var pckt *protocol.Pong = protocol.NewPong()
+		var pckt *protocol.Pong = protocol.NewRawPong()
 		values = append(values, pckt)
 		store.AddInbound(DEFCLN, pckt)
 	}
@@ -191,7 +191,7 @@ func TestDeleteIn(t *testing.T) {
 		t.Fatal(EINVS)
 	}
 	// existing user, non existing packet
-	var pckt *protocol.Pong = protocol.NewPong()
+	var pckt *protocol.Pong = protocol.NewRawPong()
 	if ok := store.DeleteIn(DEFCLN, pckt); ok {
 		t.Fatal(EINVS)
 	}
@@ -203,7 +203,7 @@ func TestDeleteOut(t *testing.T) {
 
 	store.AddClient(DEFCLN)
 	for i := 0; i < 5; i++ {
-		var pckt *protocol.Pong = protocol.NewPong()
+		var pckt *protocol.Pong = protocol.NewRawPong()
 		values = append(values, pckt)
 		store.AddOutbound(DEFCLN, pckt)
 	}
@@ -218,7 +218,7 @@ func TestDeleteOut(t *testing.T) {
 		t.Fatal(EINVS)
 	}
 	// existing user, non existing packet
-	var pckt *protocol.Pong = protocol.NewPong()
+	var pckt *protocol.Pong = protocol.NewRawPong()
 	if ok := store.DeleteOut(DEFCLN, pckt); ok {
 		t.Fatal(EINVS)
 	}
@@ -234,7 +234,7 @@ func TestGetNewID(t *testing.T) {
 	var i uint16
 
 	for i = 0; i < 6; i++ {
-		var pckt *protocol.Pong = protocol.NewPong()
+		var pckt *protocol.Pong = protocol.NewRawPong()
 		var uid uuid.UUID = pckt.UUID()
 		uids[i] = uid
 		ids[i] = msgid.GetNewID(uid)
@@ -269,18 +269,22 @@ func TestOrderedMessages(t *testing.T) {
 	var msgstore *MessageStore = NewInitedMessageStore()
 	msgstore.AddClient("test")
 	for i := 0; i < 6; i++ {
-		var pckt *protocol.Publish = protocol.NewPublish()
+		var pckt *protocol.Publish = protocol.NewRawPublish()
 		pckt.Message = []byte(fmt.Sprintf("test_%d", i))
-		pckt.Encode()
+		if err := pckt.Encode(); err != nil {
+			t.Fatal(EINVS)
+		}
+
 		msgstore.AddOutbound("test", pckt)
 	}
 
 	all := msgstore.GetAllOut("test")
 	for i, msg := range all {
 		expstr := fmt.Sprintf("test_%d", i)
-		m := msg.GetPacket().(*protocol.Packet)
-		p := protocol.NewPublish()
-		p.DecodeFrom(m.Data)
+		p := protocol.NewPublish(msg.GetPacket())
+		if p == nil {
+			t.Fatal(EINVS)
+		}
 		if string(p.Message) != expstr {
 			t.Fatal(EINVS)
 		}
