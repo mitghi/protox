@@ -26,85 +26,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"net"
-	"time"
-
-	"github.com/mitghi/protox/protobase"
 )
 
 // TODO
-
-// ServeTLS is the main listening loop for serving clients over TLS sockets. It is
-// responsible for accepting incoming TCP connection from clients. It is important
-// to ensure that key paths are not non-existing.
-func (s *Server) ServeTLS() (err error) {
-	const fn = "ServeTCP"
-	// TODO
-	s.State.mode = ProtoTLS
-	var (
-		server net.Listener
-		ticker *time.Ticker
-	)
-
-	// NOTE: IMPORTANT:
-	// . opts must be checked for having appropirate Config type
-	opts := s.opts.Config.(TLSOptions)
-	tlsconfigs, err := s.generateTLSConfig(&opts)
-	if err != nil {
-		return err
-	}
-	server, err = tls.Listen("tcp", s.opts.Addr, tlsconfigs)
-	defer server.Close()
-	if err != nil {
-		logger.Debug("- [Fatal] Cannot listen for incomming connections.")
-		return err
-	}
-	s.listener = &server
-	_ = s.SetStatus(protobase.ServerRunning)
-	ticker = time.NewTicker(time.Millisecond * 500)
-	defer ticker.Stop()
-	defer s.SetStatus(protobase.ServerStopped)
-	// defer s.corous.Done()
-	go func() {
-		for _ = range ticker.C {
-			if stat := s.GetStatus(); stat == protobase.ForceShutdown {
-				if err := (*s.listener).Close(); err != nil {
-					logger.FError(fn, "- [TCP Handler] cannot close the server.", err)
-				}
-				logger.FDebug(fn, "* [Coro] waiting for coroutines ....")
-				break
-				// s.corous.Wait()
-			}
-		}
-	}()
-ML:
-	for {
-		var (
-			conn net.Conn
-		)
-		conn, err = server.Accept()
-		if err != nil {
-			// Wait for all corous to finish
-			// s.corous.Wait()
-			logger.FDebug(fn, "Returning from TcpListener", "error")
-			logger.FDebug(fn, "* [Coro] finished \t\t finished. ")
-			logger.FDebug(fn, "{{ breaking ML }}")
-			// tell other side of chan because shit hit the fan!
-			// s.critical <- struct{}{}
-			// return err
-			break ML
-		}
-		logger.FInfo(fn, "* [Genesis] Participation request accepted.")
-		s.corous.Add(1)
-		go s.handleIncomingConnection(conn)
-	}
-	s.disconnectAll()
-	// Wait for all corous to finish
-	s.corous.Wait()
-	// tell other side of chan because shit hit the fan!
-	s.critical <- struct{}{}
-	return err
-}
 
 // generateTLSConfig generates a tailored configuration for TLS server
 // and returns a pointer to a `tls.Config`. It returns an error to indicate

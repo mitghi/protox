@@ -35,7 +35,7 @@ import (
 	"net"
 	"sync"
 
-	buffpool "github.com/mitghi/lfpool" /* will be replaced with new lock-free implementation */
+	/* will be replaced with new lock-free implementation */
 	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/protobase"
 )
@@ -112,29 +112,32 @@ type ClientDelegate func(string, string, string) protobase.ClientInterface
 // ConnectionDelegate is a signature for `ProtoConnection` delegation.
 type ConnectionDelegate func(net.Conn) protobase.ProtoConnection
 
+// Defaults
+var (
+	DefaultHeartbeat int = 1
+)
+
 // Server is a main implementation of `protocol.ServerInterface`.
 type Server struct {
 	sync.RWMutex
 	protobase.ServerInterface
 
+	corous             sync.WaitGroup
 	Clients            map[net.Conn]protobase.ProtoConnection
-	Router             map[string]map[string]protobase.ProtoConnection
 	onNewClient        func(string, string, string) protobase.ClientInterface
 	onNewConnection    ConnectionDelegate
 	onNewMessage       ServerHandlerFunc
 	permissionDelegate func(protobase.AuthInterface, ...string) bool
 	Authenticator      protobase.AuthInterface
 	Store              protobase.MessageStorage
+	Router             protobase.RouterInterface
 	State              *serverState
-	rt                 *Router
 	listener           *net.Listener
-	buffer             *buffpool.BuffPool
 	opts               *ServerConfigs
-	corous             sync.WaitGroup
-	heartbeat          int
-	Status             uint32
 	StatusChan         chan uint32
 	critical           chan struct{}
+	heartbeat          int
+	Status             uint32
 	// TODO: NOTE:
 	//  . add timestamp and expiration date.
 	//  . for heartbeat, uint can also be used.

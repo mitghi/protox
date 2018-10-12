@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"net"
 )
 
 // UNIXSOPtions contains necessary information required by unix socket server.
@@ -36,4 +37,32 @@ type ServerConfigs struct {
 	TRate int
 	// TODO
 	// . add callbacks
+}
+
+func precheckOpts(opts *ServerConfigs) error {
+	// TODO
+	// . precheck server options before proceeding
+	_, _, err := net.SplitHostPort(opts.Addr)
+	if err != nil {
+		return SRVInvalidAddr
+	}
+	switch opts.Mode {
+	case ProtoTCP:
+		// NOTE:
+		// . temporarily its ok
+		return nil
+	case ProtoTLS:
+		if _, ok := opts.Config.(TCPOptions); !ok {
+			return SRVMissingOptions
+		}
+		return nil
+	case ProtoSSL:
+		// TODO
+		return SRVInvalidMode
+	case ProtoUNIXSO:
+		// TODO
+		return SRVInvalidMode
+	default:
+		return SRVInvalidMode
+	}
 }

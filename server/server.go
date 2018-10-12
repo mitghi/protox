@@ -27,8 +27,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	buffpool "github.com/mitghi/lfpool"
 	"github.com/mitghi/protox/protobase"
+	"github.com/mitghi/protox/server/router"
 )
 
 // Ensure interface (protocol) conformance.
@@ -39,21 +39,18 @@ var (
 // NewServer creates a new server instance. It is the entry point
 // for using underlaying subsystems. Most of the subsystems can be
 // customized by providing a handler function or delegating.
-func NewServer() *Server {
-	var (
-		server *Server = &Server{}
-	)
-	server.Clients = make(map[net.Conn]protobase.ProtoConnection)
-	server.Router = make(map[string]map[string]protobase.ProtoConnection)
-	server.heartbeat = 1
-	server.Status = protobase.ServerNone
-	server.StatusChan = make(chan uint32, 1)
-	server.critical = make(chan struct{}, 1)
-	server.buffer = buffpool.NewBuffPool()
-	server.rt = NewRouterWithBuffer(server.buffer)
-	server.State = newServerState(0)
+func NewServer() (s *Server) {
+	s = &Server{
+		Clients:    make(map[net.Conn]protobase.ProtoConnection),
+		Status:     protobase.ServerNone,
+		StatusChan: make(chan uint32, 1),
+		State:      newServerState(0),
+		Router:     router.NewRouter(),
+		heartbeat:  DefaultHeartbeat,
+		critical:   make(chan struct{}, 1),
+	}
 
-	return server
+	return s
 }
 
 // NewServerWithConfigs creates a new server instance using options
@@ -236,15 +233,15 @@ func (s *Server) NotifyConnected(prc protobase.ProtoConnection) {
 //
 func (s *Server) NotifySubscribe(prc protobase.ProtoConnection, msg protobase.MsgInterface) {
 	// TODO
-	const _fn = "NotifySubscribe"
+	const fn = "NotifySubscribe"
 	var (
 		clid  string = prc.GetClient().GetIdentifier()
 		topic string = msg.Envelope().Route()
 		qos   byte   = msg.QoS()
 	)
-	logger.FDebugf(_fn, "+ [Client][Layer] client(%s) attached to stream of (%s) with QoS(%d).", clid, topic, int(qos))
-	logger.Infof("+ [Subscription] Client(%s) subscribed to stream (%s) with QoS(%d).", clid, topic, int(qos))
-	s.rt.AddSub(clid, topic, qos)
+	logger.FDebugf(fn, "+ [Client][Layer] client(%s) attached to stream of (%s) with QoS(%d).", clid, topic, int(qos))
+	logger.Infof("+ [Subscription][Server] Client(%s) subscribed to stream (%s) with QoS(%d).", clid, topic, int(qos))
+	s.Router.Add(clid, topic, qos)
 }
 
 // NotifyPublish sends messages from publishers to subscribers. A compatible
@@ -256,9 +253,8 @@ func (s *Server) NotifyPublish(prc protobase.ProtoConnection, msg protobase.MsgI
 	var (
 		topic   string = msg.Envelope().Route()
 		message []byte = msg.Envelope().Payload()
-		// dir     protobase.MsgDir = msg.Dir()
 	)
-	m, _ := s.rt.FindSub(topic)
+	m, _ := s.Router.Find(topic)
 	for k, wqos := range m {
 		cl := s.State.get(k)
 		logger.FDebug(fn, "* [Publish] client found.", cl)
@@ -269,42 +265,27 @@ func (s *Server) NotifyPublish(prc protobase.ProtoConnection, msg protobase.MsgI
 			)
 			if cl.proto == prc {
 				logger.FDebug(fn, "? [Publish] cl.proto==prc ? ", "userId", clid)
-				// NOTE: IMPORTANT:
-				// . this has changed
-				// . remove after test
-				// begin
-				// continue
-				// end
 			}
 			prclid := prc.GetClient().GetIdentifier()
-			// if stat := cl.proto.GetStatus(); stat == protobase.STATONLINE {
 			if wqos == 0 && cl.proto.GetStatus() != protobase.STATONLINE {
 				continue
 			}
-			logger.FDebugf(fn, "+ [Publish] prc(%s) - client(%s) is [Online], sending message(%s) from route(%s), QoS(%d).", prclid, clid, message, clid, msg.QoS())
-
+			logger.FDebugf(fn, "+ [Publish] prc(%s) - client(%s) is [Online], sending message(%s) from route(%s), QoS(%d).",
+				prclid, clid, message, clid, msg.QoS())
 			npb := msg.Clone(protobase.MDOutbound)
-			// currQoS := npb.QoS()
 			npb.SetWishQoS(wqos)
-			// logger.Debugf("+ [Publish     ] Routing Topic(%s)-> Message(%s) for Client(%s) with QoS(%d) [ WishQoS(%d), wqos(%d) ].", topic, message, clid, currQoS, npb.QoS(), wqos)
-			logger.Infof("+ [Publish     ] Routing Topic(%s)-> Message(%s) for Client(%s) with QoS(%d).", topic, message, clid, npb.QoS())
-			// NOTE
-			// . this has changed
-			// cl.proto.SendMessage(npb)
+			logger.Infof("+ [Publish     ] Routing Topic(%s)-> Message(%s) for Client(%s) [ WishQoS(%d), wqos(%d) ].", topic, message, clid, npb.QoS(), wqos)
+			// logger.Infof(fn, "+ [Publish     ] Routing Topic(%s)-> Message(%s) for Client(%s) with QoS(%d).", topic, message, clid, npb.QoS())
 			cl.proto.SendMessage(npb, cl.proto == prc)
 			user.Publish(npb)
-			// } else {
-			// 	// TODO
-			// 	// . add to outbound messages
-			// }
 		}
 	}
 	return
 }
 
 func (s *Server) NotifyQueue(prc protobase.ProtoConnection, msg protobase.MsgInterface) {
-	const _fname = "NotifyQueue"
-	logger.FInfo(_fname, "+ [Queue    ] message received.")
+	const fn = "NotifyQueue"
+	logger.FInfo(fn, "+ [Server][Queue    ] message received.")
 }
 
 // Setup is for prechecks before running the server. It must crash
@@ -336,12 +317,14 @@ func (s *Server) disconnectAll() {
 	case protobase.ServerNone, protobase.ServerStopped:
 		return
 	default:
+		/* critical section */
 		s.State.RLock()
 		for _, v := range s.State.clients {
 			if stat := v.Status(); stat == protobase.STATONLINE {
-				logger.FDebug(fn, "- [STATCONNECTED] setting godown flag for [CIENT].", "userId", v.uid)
+				logger.FDebug(fn, "- [STATCONNECTED] setting godown flag for [CLIENT].", "userId", v.uid)
 				sent, recv, connect, disconnect, reject, fault := v.Statics()
-				logger.FDebug(fn, "- [STATCONNECTED] stats for [CLIENT].", "stats", "userId", v.uid, "stats", sent, recv, connect, disconnect, reject, fault)
+				logger.FDebug(fn, "- [STATCONNECTED] stats for [CLIENT].", "stats", "userId",
+					v.uid, "stats", sent, recv, connect, disconnect, reject, fault)
 				v.proto.SetStatus(protobase.STATGODOWN)
 				errch := v.proto.GetErrChan()
 				// send notification to client's err chan,
@@ -351,10 +334,11 @@ func (s *Server) disconnectAll() {
 				default:
 				}
 			} else {
-				logger.FDebug(fn, "- [Status=%d] client is not connected.", int(stat))
+				logger.FDebugf(fn, "- [Status=%d] client is not connected.", int(stat))
 			}
 		}
 		s.State.RUnlock()
+		/* critical section - end */
 	}
 }
 
@@ -362,28 +346,30 @@ func (s *Server) disconnectAll() {
 // rejected ( invalid creds, ban , ..... ).
 func (s *Server) NotifyReject(prc protobase.ProtoConnection) {
 	const fn = "NotifyRejected"
-	logger.FDebug(fn, "- [Server] received [Rejection], connection to broker is rejected.")
-	logger.Info("- [Server  ] A Client has been rejected.")
-	// tell the workgroup that conn is finished
 	var (
 		cl   protobase.ClientInterface
 		clid string
 	)
+	logger.FDebug(fn, "- [Server] received [Rejection], connection to broker is rejected.")
+	logger.Info("- [Server  ] A Client has been rejected.")
 	cl = prc.GetClient()
 	if cl == nil {
-		logger.FDebug(fn, "? [Server] cl==nil ?")
+		logger.FDebug(fn, "- [Server] no client is associated to client with id(%s)", clid)
+		logger.FWarn(fn, "- [Server] signaling done to work group and stopping current procedure.")
 		s.corous.Done()
 		return
 	}
 	if conn := s.State.get(clid); conn != nil {
+		/* critical section */
 		conn.Lock()
-		// conn.conn = nil
+		conn.conn = nil
 		conn.Ended()
 		conn.Inc(CLReject)
 		conn.Unlock()
+		/* critical section - end */
 	}
+	// signal done to work group
 	s.corous.Done()
-	// TODO
 }
 
 // NotifyDisconnected notifies the server that the connection to
@@ -391,12 +377,12 @@ func (s *Server) NotifyReject(prc protobase.ProtoConnection) {
 func (s *Server) NotifyDisconnected(prc protobase.ProtoConnection) {
 	const fn = "NotifyDisconnected"
 	var (
-		cl       protobase.ClientInterface = prc.GetClient()
-		clid     string                    = cl.GetIdentifier()
-		isGodown bool                      = false
+		cl          protobase.ClientInterface = prc.GetClient()
+		clid        string                    = cl.GetIdentifier()
+		isGoingDown bool                      = false
 	)
 	if stat := s.GetStatus(); stat != protobase.ServerRunning {
-		logger.FWarn(fn, "- [SERVER] is not in running state and received a [Disconnect] request from client(%s).", clid)
+		logger.FWarnf(fn, "- [SERVER] is not in running state and received a [Disconnect] request from client(%s).", clid)
 		s.corous.Done()
 		return
 	}
@@ -413,29 +399,31 @@ func (s *Server) NotifyDisconnected(prc protobase.ProtoConnection) {
 		s.Shutdown()
 		return
 	case protobase.STATGODOWN:
-		logger.FDebugf("? [Server] request to [Disconnect] client(%s).", clid)
-		isGodown = true
+		logger.FDebugf("* [Server] request to [Disconnect] client(%s).", clid)
+		isGoingDown = true
 	}
 	logger.FDebugf(fn, "- [Event][Death] Detached [Client](%s).", clid)
 	conn := s.State.get(clid)
 	if conn == nil {
 		// NOTE TODO
 		// . this is fatal, recheck
-		logger.Fatal("? [Server] conn==nil ?")
+		logger.Fatal(fn, "- [Server] no connection is associated to client with id(%s)", clid)
 	} else {
+		/* critical section */
 		conn.Lock()
 		logger.FDebugf(fn, "- [Server][Event][ConnEnded] for [Client](%s).", clid)
 		conn.conn = nil
 		conn.Ended()
 		conn.Inc(CLDisconnected)
 		conn.Unlock()
-		if isGodown {
+		/* critical section - end */
+		if isGoingDown {
 			cl.Disconnected(protobase.PUDisconnect)
 		} else {
 			cl.Disconnected(protobase.PUForceTerminate)
 		}
 	}
-	logger.Infof("- [Server  ] Client(%s) disconnected.", clid)
+	logger.Infof(fn, "- [Server  ] Client(%s) disconnected.", clid)
 	s.corous.Done()
 }
 
@@ -444,16 +432,17 @@ func (s *Server) NotifyDisconnected(prc protobase.ProtoConnection) {
 // a compatible `protocol.ProtoConnection` struct ( made by using delegates ).
 func (s *Server) handleIncomingConnection(conn net.Conn) {
 	if s.onNewConnection == nil {
-		panic("No handler is specified for 'ClientHandler'")
+		panic("protox: no NewConnection handler is specified.")
 	}
-	var newConnection protobase.ProtoConnection = s.onNewConnection(conn)
+	var (
+		newConnection protobase.ProtoConnection = s.onNewConnection(conn)
+	)
 	newConnection.SetAuthenticator(s.Authenticator)
 	newConnection.SetServer(s)
 	newConnection.SetClientDelegate(s.onNewClient)
 	newConnection.SetMessageStorage(s.Store)
 	newConnection.SetHeartBeat(s.heartbeat)
 	newConnection.SetPermissionDelegate(s.permissionDelegate)
-	// this is for `newConnection.Handle()`
 	s.corous.Add(1)
 	go newConnection.Handle()
 	// Signal that handleIncomingConnection is finished.
@@ -466,11 +455,12 @@ func (s *Server) handleIncomingConnection(conn net.Conn) {
 // when the client is fully authorized and passes `Genesis` stage.
 func (s *Server) RegisterClient(prc protobase.ProtoConnection) {
 	const fn = "RegisterClient"
+	/* critical section */
 	s.Lock()
 	logger.FDebug(fn, "+ [Client] Passed [Genesis] state and is now [Online].")
 	s.Clients[prc.GetConnection()] = prc
-	// s.State.set
 	s.Unlock()
+	/* critical section - end */
 }
 
 func (s *Server) Serve() error {
@@ -486,32 +476,4 @@ func (s *Server) Serve() error {
 		// . run server based on options
 	}
 	return nil
-}
-
-func precheckOpts(opts *ServerConfigs) error {
-	// TODO
-	// . precheck server options before proceeding
-	_, _, err := net.SplitHostPort(opts.Addr)
-	if err != nil {
-		return SRVInvalidAddr
-	}
-	switch opts.Mode {
-	case ProtoTCP:
-		// NOTE:
-		// . temporarily its ok
-		return nil
-	case ProtoTLS:
-		if _, ok := opts.Config.(TCPOptions); !ok {
-			return SRVMissingOptions
-		}
-		return nil
-	case ProtoSSL:
-		// TODO
-		return SRVInvalidMode
-	case ProtoUNIXSO:
-		// TODO
-		return SRVInvalidMode
-	default:
-		return SRVInvalidMode
-	}
 }

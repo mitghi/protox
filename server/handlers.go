@@ -23,6 +23,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"net"
 	"time"
 
@@ -40,7 +41,7 @@ func (s *Server) ServeTCP(address string) (err error) {
 	)
 	server, err = net.Listen("tcp", address)
 	if err != nil {
-		logger.Debug("- [Fatal] Cannot listen for incomming connections.")
+		logger.Debug(fn, "- [Fatal] Cannot listen for incomming connections.")
 		s.StatusChan <- protobase.ServerStopped
 		_ = s.SetStatus(protobase.ServerStopped)
 		return err
@@ -52,20 +53,13 @@ func (s *Server) ServeTCP(address string) (err error) {
 	ticker = time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 	defer s.SetStatus(protobase.ServerStopped)
-	/* d e b u g */
-	// defer s.corous.Done()
-	/* d e b u g */
 	go func() {
 		for _ = range ticker.C {
 			if stat := s.GetStatus(); stat == protobase.ForceShutdown {
 				if err := (*s.listener).Close(); err != nil {
 					logger.FError(fn, "- [TCP Handler] cannot close the server.", err)
 				}
-				logger.FDebug(fn, "* [Coro] waiting for coroutines ....")
 				break
-				/* d e b u g */
-				// s.corous.Wait()
-				/* d e b u g */
 			}
 		}
 	}()
@@ -76,18 +70,79 @@ ML:
 		)
 		conn, err = server.Accept()
 		if err != nil {
-			/* d e b u g */
+			logger.FDebug(fn, "- [Server] returning from Tcp handler. error:", err)
+			break ML
+		}
+		logger.FInfo(fn, "* [Genesis] Participation request accepted.")
+		s.corous.Add(1)
+		go s.handleIncomingConnection(conn)
+	}
+	s.disconnectAll()
+	// Wait for all corous to finish
+	s.corous.Wait()
+	// tell other side of chan because shit hit the fan!
+	s.critical <- struct{}{}
+	return err
+}
+
+// ServeTLS is the main listening loop for serving clients over TLS sockets. It is
+// responsible for accepting incoming TCP connection from clients. It is important
+// to ensure that key paths are not non-existing.
+func (s *Server) ServeTLS() (err error) {
+	const fn = "ServeTCP"
+	// TODO
+	s.State.mode = ProtoTLS
+	var (
+		server net.Listener
+		ticker *time.Ticker
+	)
+
+	// NOTE: IMPORTANT:
+	// . opts must be checked for having appropirate Config type
+	opts := s.opts.Config.(TLSOptions)
+	tlsconfigs, err := s.generateTLSConfig(&opts)
+	if err != nil {
+		return err
+	}
+	server, err = tls.Listen("tcp", s.opts.Addr, tlsconfigs)
+	defer server.Close()
+	if err != nil {
+		logger.Debug("- [Fatal] Cannot listen for incomming connections.")
+		return err
+	}
+	s.listener = &server
+	_ = s.SetStatus(protobase.ServerRunning)
+	ticker = time.NewTicker(time.Millisecond * 500)
+	defer ticker.Stop()
+	defer s.SetStatus(protobase.ServerStopped)
+	// defer s.corous.Done()
+	go func() {
+		for _ = range ticker.C {
+			if stat := s.GetStatus(); stat == protobase.ForceShutdown {
+				if err := (*s.listener).Close(); err != nil {
+					logger.FError(fn, "- [TCP Handler] cannot close the server.", err)
+				}
+				logger.FDebug(fn, "* [Coro] waiting for coroutines ....")
+				break
+				// s.corous.Wait()
+			}
+		}
+	}()
+ML:
+	for {
+		var (
+			conn net.Conn
+		)
+		conn, err = server.Accept()
+		if err != nil {
 			// Wait for all corous to finish
 			// s.corous.Wait()
-			/* d e b u g */
-			logger.FDebug(fn, "* [Coro] Returning from TcpListener", "error")
+			logger.FDebug(fn, "Returning from TcpListener", "error")
 			logger.FDebug(fn, "* [Coro] finished \t\t finished. ")
-			logger.FDebug(fn, "* [Coro] {{ breaking ML }}")
-			/* d e b u g */
+			logger.FDebug(fn, "{{ breaking ML }}")
 			// tell other side of chan because shit hit the fan!
 			// s.critical <- struct{}{}
 			// return err
-			/* d e b u g */
 			break ML
 		}
 		logger.FInfo(fn, "* [Genesis] Participation request accepted.")

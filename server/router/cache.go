@@ -20,19 +20,18 @@
 * SOFTWARE.
  */
 
-package server
+package router
 
 import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/utils/strs"
 )
 
 /*
 *
-* NOTE: this package is not THREAD-SAFE, INTENTIONALLY.
+* NOTE: this package is not THREAD-SAFE. INTENTIONALLY.
 * Lock must be explicitely acquired before using any
 * of these subroutines.
 *
@@ -42,6 +41,11 @@ import (
 * TODO:
 * . decouple into separate package
  */
+
+var (
+	cSeparator string
+	cWildcard  string
+)
 
 // subcacheline is a simple struct that holds individual
 // subscription information for each cache line. NOTE: not
@@ -115,7 +119,7 @@ func (sc *subcache) GetCacheLines(route string) (lines [][]*subscription) {
 		nsb []*subscription
 	)
 	for k, v := range sc.cache {
-		if !strs.Match(k, route, protobase.Sep, protobase.Wlcd) {
+		if !strs.Match(k, route, Sep, Wlcd) {
 			continue
 		}
 
@@ -150,7 +154,7 @@ func (sc *subcache) AddCacheLines(route string, sb *subscription) {
 // the lock before using this receiver.
 func (sc *subcache) AppendToCacheLine(route string, sb *subscription) {
 	for k, _ := range sc.cache {
-		if strs.Match(k, route, protobase.Sep, protobase.Wlcd) {
+		if strs.Match(k, route, Sep, Wlcd) {
 			sc.cache[k].add(sb)
 		}
 	}
@@ -172,7 +176,7 @@ func (sc *subcache) RemoveCacheLine(route string) {
 // the lock before using this receiver.
 func (sc *subcache) RemoveCacheLines(route string) {
 	for k, _ := range sc.cache {
-		if strs.Match(k, route, protobase.Sep, protobase.Wlcd) {
+		if strs.Match(k, route, Sep, Wlcd) {
 			delete(sc.cache, route)
 		}
 	}
@@ -182,10 +186,17 @@ func (sc *subcache) RemoveCacheLines(route string) {
 // NOTE: not thread safe, should manually acquire the lock before
 // using this receiver.
 func (sc *subcache) CachePrintV() {
+	sc.String()
+}
+
+// String prints cache lines. It is used for debugging purposes.
+// NOTE: not thread safe, should manually acquire the lock before
+// using this receiver.
+func (sc *subcache) String() {
 	for k, v := range sc.cache {
 		fmt.Println("\tTopic", k)
 		for _, t := range v.line {
-			fmt.Printf("\t\t. Topic(%s), QoS(%d), UID(%s)\n", t.topic, t.qos, t.uid)
+			fmt.Printf("\t\t. Topic(%s), Eticket(%d), UID(%s)\n", t.topic, t.eticket, t.uid)
 		}
 	}
 }

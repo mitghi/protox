@@ -20,7 +20,7 @@
 * SOFTWARE.
  */
 
-package server
+package router
 
 /**
 *
@@ -39,22 +39,22 @@ import (
 
 func TestAddSub(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client", "testing/a/simple/string", 1)
-	r.AddSub("client2", "testing/*", 1)
-	r.AddSub("client3", "testing/a/simulation", 1)
-	r.AddSub("client4", "test/a", 1)
-	r.AddSub("SPC", "testing/*", 1)
+	r.Add("client", "testing/a/simple/string", 1)
+	r.Add("client2", "testing/*", 1)
+	r.Add("client3", "testing/a/simulation", 1)
+	r.Add("client4", "test/a", 1)
+	r.Add("SPC", "testing/*", 1)
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
 }
 
-func TestAddSub2(t *testing.T) {
+func TestAdd2(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client", "testing/a/simple/string", 1)
-	r.AddSub("client2", "testing/*", 1)
-	r.AddSub("client3", "testing/a/simulation", 1)
-	r.AddSub("client4", "test/a", 1)
-	r.AddSub("SPC", "testing/*", 1)
+	r.Add("client", "testing/a/simple/string", 1)
+	r.Add("client2", "testing/*", 1)
+	r.Add("client3", "testing/a/simulation", 1)
+	r.Add("client4", "test/a", 1)
+	r.Add("SPC", "testing/*", 1)
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
 	r.subs.Remove("testing/*")
@@ -64,19 +64,19 @@ func TestAddSub2(t *testing.T) {
 
 }
 
-func TestAddSub3(t *testing.T) {
+func TestAdd3(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client", "a/simple/path", 1)
-	r.AddSub("client", "a/simple/*/thing", 1)
-	r.AddSub("client", "a/another/simple/thing", 1)
-	r.AddSub("client", "a/another/simulating/thing", 1)
-	r.AddSub("client", "aa/branch", 1)
-	r.AddSub("client", "a/another/simul", 1)
-	r.AddSub("client", "a/another/sim", 1)
-	r.AddSub("client", "a/another/sima", 1)
+	r.Add("client", "a/simple/path", 1)
+	r.Add("client", "a/simple/*/thing", 1)
+	r.Add("client", "a/another/simple/thing", 1)
+	r.Add("client", "a/another/simulating/thing", 1)
+	r.Add("client", "aa/branch", 1)
+	r.Add("client", "a/another/simul", 1)
+	r.Add("client", "a/another/sim", 1)
+	r.Add("client", "a/another/sima", 1)
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
-	m, err := r.FindSub("a/simple/path")
+	m, err := r.Find("a/simple/path")
 	if err != nil {
 		t.Fatal("err!=nil", err)
 	}
@@ -85,12 +85,12 @@ func TestAddSub3(t *testing.T) {
 	}
 }
 
-func TestAddSub4(t *testing.T) {
+func TestAdd4(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client1", "a/simple/path", 1)
-	r.AddSub("client2", "a/*", 1)
-	r.AddSub("client3", "a/another/simple/thing", 1)
-	r.AddSub("client4", "a/*/location", 1)
+	r.Add("client1", "a/simple/path", 1)
+	r.Add("client2", "a/*", 1)
+	r.Add("client3", "a/another/simple/thing", 1)
+	r.Add("client4", "a/*/location", 1)
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
 	m, err := r.FindRawSubscribers("a/another/simple/thing")
@@ -107,10 +107,10 @@ func TestAddSub4(t *testing.T) {
 
 func TestFindSub(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client1", "a/simple/path", 1)
-	r.AddSub("client2", "a/*", 1)
-	r.AddSub("client3", "a/another/simple/thing", 1)
-	r.AddSub("client4", "a/*/location", 1)
+	r.Add("client1", "a/simple/path", 1)
+	r.Add("client2", "a/*", 1)
+	r.Add("client3", "a/another/simple/thing", 1)
+	r.Add("client4", "a/*/location", 1)
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
 	m, err := r.FindSubC("a/another/simple/thing")
@@ -128,11 +128,11 @@ func TestFindSub(t *testing.T) {
 
 func TestCache(t *testing.T) {
 	r := NewRouter()
-	r.AddSub("client1", "a/awesome/topic", 1)
-	r.AddSub("client2", "a/*/topic", 2)
-	r.AddSub("client3", "a/*", 0)
-	r.AddSub("client4", "b/topic", 0)
-	r.AddSub("client2", "a/awesome/topic", 1)
+	r.Add("client1", "a/awesome/topic", 1)
+	r.Add("client2", "a/*/topic", 2)
+	r.Add("client3", "a/*", 0)
+	r.Add("client4", "b/topic", 0)
+	r.Add("client2", "a/awesome/topic", 1)
 	m, err := r.FindSubC("a/awesome/topic")
 	if err != nil {
 		t.Fatal("err!=nil, expected to be nil", err)
@@ -147,7 +147,7 @@ func TestCache(t *testing.T) {
 	r.subs.cache.CachePrintV()
 	r.subs.PrintV()
 	fmt.Println("-------------------------------")
-	r.RemoveSub("client1", "a/awesome/topic")
+	r.Remove("client1", "a/awesome/topic")
 	r.subs.cache.CachePrintV()
 	r.subs.PrintV()
 }
