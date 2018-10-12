@@ -33,38 +33,38 @@ var _ protobase.CredentialsInterface = (*Creds)(nil)
 
 // GetCredentials returns data associated with
 // authenication method.
-func (self *Creds) GetCredentials() (username string, password string, clientId string) {
-	username = self.Username
-	password = self.Password
-	clientId = self.ClientId
+func (c *Creds) GetCredentials() (username string, password string, clientId string) {
+	username = c.Username
+	password = c.Password
+	clientId = c.ClientId
 
 	return
 }
 
 // GetUID returns a string used for
 // user identification ( i.e. used id ).
-func (self *Creds) GetUID() string {
-	return self.Username
+func (c *Creds) GetUID() string {
+	return c.Username
 }
 
 // Copy returns a new instance of a compatible
 // `protobase.CredentialsInterface`.
-func (self *Creds) Copy() protobase.CredentialsInterface {
-	return &Creds{self.Username, self.Password, self.ClientId}
+func (c *Creds) Copy() protobase.CredentialsInterface {
+	return &Creds{c.Username, c.Password, c.ClientId}
 }
 
 // cleanInput sanitizes input.
-func (self *Creds) cleanInput(cred protobase.CredentialsInterface) bool {
+func (c *Creds) cleanInput(cred protobase.CredentialsInterface) bool {
 	// TODO:
 	// . this is a critical method and should
 	//   be reimplemented in a sane way. This
 	//   version is only a dummy.
-	if (self.Username == "") || (self.Password == "") {
+	if (c.Username == "") || (c.Password == "") {
 		return false
 	}
-	self.Username = strings.TrimSpace(self.Username)
-	self.Password = strings.TrimSpace(self.Password)
-	self.ClientId = strings.TrimSpace(self.ClientId)
+	c.Username = strings.TrimSpace(c.Username)
+	c.Password = strings.TrimSpace(c.Password)
+	c.ClientId = strings.TrimSpace(c.ClientId)
 
 	return true
 }
@@ -75,7 +75,7 @@ func (self *Creds) cleanInput(cred protobase.CredentialsInterface) bool {
 // or not. It is used to match stored credentials
 // against user-given credentials usually during
 // initial handshake and initialization stage.
-func (self *Creds) Match(cred protobase.CredentialsInterface) (ret bool) {
+func (c *Creds) Match(cred protobase.CredentialsInterface) (ret bool) {
 	if cred == nil {
 		return false
 	}
@@ -88,16 +88,16 @@ func (self *Creds) Match(cred protobase.CredentialsInterface) (ret bool) {
 	case *Creds:
 		nc, _ := cred.(*Creds)
 		uid, passwd, clid := nc.GetCredentials()
-		uidok = self.Username == uid
-		pswok = self.Password == passwd
-		clidok = self.ClientId == clid
+		uidok = c.Username == uid
+		pswok = c.Password == passwd
+		clidok = c.ClientId == clid
 		ret = (uidok && pswok) && clidok
 		break
 	default:
 		uid, passwd, clid := cred.GetCredentials()
-		uidok = self.Username == uid
-		pswok = self.Password == passwd
-		clidok = self.ClientId == clid
+		uidok = c.Username == uid
+		pswok = c.Password == passwd
+		clidok = c.ClientId == clid
 		ret = (uidok && pswok) && clidok
 		break
 	}
@@ -109,14 +109,14 @@ func (self *Creds) Match(cred protobase.CredentialsInterface) (ret bool) {
 // whether the actual credentials are properly
 // formatted and checks edge cases ( e.g. empty
 // strings ).
-func (self *Creds) IsValid() (ok bool) {
+func (c *Creds) IsValid() (ok bool) {
 	// TODO
 	// . implement format checks
 	// . add edge cases
-	ok = ((len(self.Username) > 0) &&
-		(len(self.Password) > 0))
-	ok = ok && ((len(strings.TrimSpace(self.Username)) > 0) &&
-		(len(strings.TrimSpace(self.Password)) > 0))
+	ok = ((len(c.Username) > 0) &&
+		(len(c.Password) > 0))
+	ok = ok && ((len(strings.TrimSpace(c.Username)) > 0) &&
+		(len(strings.TrimSpace(c.Password)) > 0))
 
 	return ok
 }
