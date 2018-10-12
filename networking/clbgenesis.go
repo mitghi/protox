@@ -26,7 +26,6 @@ import (
 	"net"
 
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol"
 )
 
 /*
@@ -130,18 +129,22 @@ func (cg *CGenesis) OnPONG(packet protobase.PacketInterface) {
 func (cg *CGenesis) OnCONNACK(packet protobase.PacketInterface) {
 	const fn string = "onCONNACK"
 	var (
-		p          *Connack     = protocol.NewConnack() // connection acknowledge packet
-		caopt      *ConnackOpts                         // connection acknowledge options subpacket
-		packetData *[]byte      = packet.GetData()
+		p     *Connack     = NewConnack(packet) // connection acknowledge packet
+		caopt *ConnackOpts                      // connection acknowledge options subpacket
 	)
 	logger.FTrace(1, fn, "+ [ConnAck] packet received.")
-	if err := p.DecodeFrom(packetData); err != nil {
-		logger.FTrace(1, fn, "- [Fatal] invalid connack packet.", err)
+	if p == nil {
+		logger.FTrace(1, fn, "- [Fatal] invalid connack packet.", packet)
 		// TODO
 		// . forward to error handler
 	}
+	// if err := p.DecodeFrom(packet.GetData()); err != nil {
+	// 	logger.FTrace(1, fn, "- [Fatal] invalid connack packet.", err)
+	// 	// TODO
+	// 	// . forward to error handler
+	// }
 	logger.FTrace(1, fn, "* [ConnAck] connack content.", p)
-	if p.ResultCode == RESPFAIL {
+	if p.ResultCode == protobase.RESPFAIL {
 		// TODO
 		// . refactor into separate routine performing pattern matching
 		//   and set the status from the provided table
@@ -149,7 +152,7 @@ func (cg *CGenesis) OnCONNACK(packet protobase.PacketInterface) {
 		logger.FTrace(1, fn, "- [Credentials] INVALID CREDENTIALS.")
 		cg.Conn.SetStatus(STATERR)
 		return
-	} else if p.ResultCode == RESPOK {
+	} else if p.ResultCode == protobase.RESPOK {
 		// successfully validated.
 		cg.Conn.SetStatus(STATONLINE)
 		logger.FTrace(1, fn, "+ [Credentials] are valid and [Client] is now (Online).")
@@ -159,10 +162,10 @@ func (cg *CGenesis) OnCONNACK(packet protobase.PacketInterface) {
 		}
 		// deserialize the options and populate
 		// the packet.
-		caopt = protocol.NewConnackOpts()
+		caopt = NewConnackOpts()
 		caopt.ParseFrom(p)
 		// store packet options for current CCONNACK state
-		cg.Conn.stateOpts[protocol.CCONNACK] = caopt
+		cg.Conn.stateOpts[protobase.CCONNACK] = caopt
 		// push to next state
 		cg.SetNextState()
 		// clean current state
@@ -188,7 +191,7 @@ func (cg *CGenesis) HandleDefault(packet protobase.PacketInterface) (ok bool) {
 	const fn = "HandleDefault"
 	var (
 		newcl   protobase.ClientInterface = cg.Conn.GetClient()
-		p       *Connect                  = protocol.NewConnect()
+		p       *Connect                  = NewRawConnect()
 		Conn    *CLBConnection            = cg.Conn
 		nc      net.Conn
 		err     error

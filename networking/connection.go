@@ -32,21 +32,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
-	"github.com/mitghi/protox/protocol/packet"
 	"github.com/mitghi/timer"
 )
 
-// ensure interface (protocol) conformance.
+// Ensure protocol (interface) conformance.
 var _ protobase.ProtoConnection = (*Connection)(nil)
 
 // ErrorHandler is `ClientInterface` error handler signature.
 type ErrorHandler func(client *protobase.ClientInterface)
 
+// Section: structs
+
 // Connection is high level manager acting as
-// hub connecting subsystems and utilizing them
+// hub, connecting subsystems and utilizing them
 // to form meaningful procedures and performing
-// meaningful operations manifesting itself as
-// basic protox system.
+// meaningful operations neccessary to have
+// a block composing basic steps in bootstrapping
+// protox.
 type Connection struct {
 	// TODO
 	// . refactor permissionDelegate via PermissionInterface
@@ -54,19 +56,21 @@ type Connection struct {
 	protocon
 
 	ErrorHandler       func(client *protobase.ClientInterface)
+	clientDelegate     func(string, string, string) protobase.ClientInterface // client delegate method
+	permissionDelegate func(protobase.AuthInterface, ...string) bool          // permission delegate
 	server             protobase.ServerInterface                              // server delegate
 	auth               protobase.AuthInterface                                // auth subsystem
 	storage            protobase.MessageStorage                               // storage subsystem
 	client             protobase.ClientInterface                              // client subsystem
-	clientDelegate     func(string, string, string) protobase.ClientInterface // client delegate method
-	permissionDelegate func(protobase.AuthInterface, ...string) bool          // permission delegate
-	deadline           *timer.Timer                                           // ping timeout
 	State              protobase.ConnectionState                              // connection state
+	deadline           *timer.Timer                                           // ping timeout
 	connTimeout        int                                                    // connection timeout (initial)
 	heartbeat          int                                                    // maximum idle time
-	unclean            uint32                                                 // status flag
+	unclean            uint32                                                 // refurbished flag
 	justStarted        bool                                                   // status flag
 }
+
+// Section: initializers [ constructors ]
 
 // NewConnection allocates and initializes a new
 // `Connection` struct from supplied `net.Conn`
@@ -75,10 +79,6 @@ type Connection struct {
 // procedure responsible for handling new
 // network connections.
 func NewConnection(conn net.Conn) *Connection {
-	// TODO
-	// . remove hardcoded values
-	// . add methods to set `connTimeout`
-	//   and `heartbeat`.
 	var (
 		c *Connection = &Connection{
 			protocon: protocon{
@@ -91,10 +91,9 @@ func NewConnection(conn net.Conn) *Connection {
 				SendChan:        nil,
 				Status:          STATDISCONNECT,
 			},
-			//initials
-			justStarted:        true, // initial connection timeout is on
-			connTimeout:        1,    // 1 second
-			heartbeat:          1,    // 1 second ping interval
+			justStarted:        true, // deadline is connTimeout when true
+			connTimeout:        CConnectionDefaultTimeout,
+			heartbeat:          CConnectionDefaultHeartbeat,
 			ErrorHandler:       nil,
 			State:              nil,
 			client:             nil,
@@ -104,10 +103,12 @@ func NewConnection(conn net.Conn) *Connection {
 			permissionDelegate: nil,
 		}
 	)
-	// set the connection state
+	// set connection driver
 	c.State = NewGenesis(c)
 	return c
 }
+
+// Section: Connection methods
 
 // MarkClean atomically flips `unclean` flag.
 // Indicates struct is reusable.
@@ -126,52 +127,47 @@ func (c *Connection) IsClean() bool {
 	return atomic.LoadUint32(&c.unclean) == 0
 }
 
-// SetInitiateTimeout is a receiver method that sets internal
-// timeout value to `timeout` argument. This value is threshold
-// to terminate connections that their initialization process takes
-// longer than `timeout`.
+// Section: Connection Setter-Getter methods
+
+// GetClient returns client field.
+func (c *Connection) GetClient() protobase.ClientInterface {
+	return c.client
+}
+
+// SetInitiateTimeout sets initial timeout.
 func (c *Connection) SetInitiateTimeout(timeout int) {
 	c.connTimeout = timeout
 }
 
-// SetHeartBeat sets the internal timer to maximum idle time which not
-// receiving from a client will not results in connection termination.
-// It is the responsibility of the client to keep up and send `Ping`
-// packets to restart this timer.
+// SetHeartBeat sets grace threshold between
+// since last 'Ping'.
 func (c *Connection) SetHeartBeat(heartbeat int) {
 	c.heartbeat = heartbeat
 }
 
-// SetClient sets the internal active client to `cl` argument. It is
-// used for callbacks and notifications.
+// SetClient sets client struct.
 func (c *Connection) SetClient(cl protobase.ClientInterface) {
 	c.client = cl
 	c.State.SetClient(cl)
 }
 
-// SetMessageStorage sets internal message store to `storage`.
+// SetMessageStorage sets message storage.
 func (c *Connection) SetMessageStorage(storage protobase.MessageStorage) {
 	c.storage = storage
 }
 
-// SetServer saves the server memory address for callbacks.
+// SetServer sets internal pointer to given server instance.
 func (c *Connection) SetServer(sn protobase.ServerInterface) {
 	c.server = sn
 	c.State.SetServer(sn)
 }
 
-// GetClient returns the responsible struct implementing `ClientInterface`.
-func (c *Connection) GetClient() protobase.ClientInterface {
-	return c.client
-}
-
-// SetAuthenticator sets the delegate for authenication system. Argument `auth`
-// will be used to authorize each client before passing into new stages.
+// SetAuthenticator sets authentication delegate.
 func (c *Connection) SetAuthenticator(auth protobase.AuthInterface) {
 	c.auth = auth
 }
 
-// SetClientDelegate is client delegate.
+// SetClientDelegate sets client delegate.
 func (c *Connection) SetClientDelegate(cl func(string, string, string) protobase.ClientInterface) {
 	c.clientDelegate = cl
 }
@@ -181,20 +177,42 @@ func (c *Connection) GetConnection() net.Conn {
 	return c.Conn
 }
 
-// SetAuthTimeout is the initial deadline for authorization. If a client is not able
-// to send its information in this period, it results in termination.
+// SetAuthTimeout sets initial authorization deadline.
+// Exceeding specified timeout result in quick
+// termination.
 func (c *Connection) SetAuthTimeout(timeout int) {
 	c.connTimeout = timeout
 }
 
-// SetPermissionDelegate sets permission callback which is used to ensure if certain
-// operation is valid given restriction and rights of a user.
+// SetPermissionDelegate sets the callback used
+// to ensure validity of access given restriction
+// and rights of a user.
 func (c *Connection) SetPermissionDelegate(pd func(protobase.AuthInterface, ...string) bool) {
 	c.permissionDelegate = pd
 }
 
-// SendMessage creates a new packet and sends it to send channel.
-func (c *Connection) SendMessage(pb protobase.MsgInterface, isOwner bool) {
+// SetErrorHandler sets the delegate for `protobase.ClientInterface` handler.
+func (c *Connection) SetErrorHandler(fn func(client *protobase.ClientInterface)) {
+	c.ErrorHandler = fn
+}
+
+// GetAuthenticator returns underlying auth subsystem.
+func (c *Connection) GetAuthenticator() protobase.AuthInterface {
+	return c.auth
+}
+
+// Section: Connection main-methods
+
+// HandleDefault is non-blocking entry point; only
+// for 'Genesis' stage.
+// NOTE: empty method
+func (c *Connection) HandleDefault(apckt protobase.PacketInterface) {
+	// NOP
+}
+
+// SendMessage is a method for sending
+// message to remote destination.
+func (c *Connection) SendMessage(pb protobase.MsgInterface, isOwner bool) (err error) {
 	const fn string = "SendMessage"
 	var (
 		envelope protobase.MsgEnvelopeInterface = pb.Envelope()
@@ -202,24 +220,15 @@ func (c *Connection) SendMessage(pb protobase.MsgInterface, isOwner bool) {
 		message  []byte                         = envelope.Payload()
 		cl       protobase.ClientInterface      = c.GetClient()
 		clid     string                         = cl.GetIdentifier()
-		msg      *Publish                       = protocol.NewPublish()
+		msg      *Publish                       = NewRawPublish()
 		qos      byte                           = pb.QoS()
 		puid     uuid.UUID
+
+		data []byte
+		p    *Packet
 	)
 	msg.Message = message
 	msg.Topic = topic
-	/* d e b u g */
-	// if isOwner {
-	// 	logger.FDebug(fn, "* [SendMessage/IsOwner] redirecting to c(%s), MessageId(%d).", clid, pb.MessageId())
-	// 	msg.Meta.MessageId = pb.MessageId()
-	// 	msg.Meta.Qos = qos
-	// 	msg.Encode()
-	// 	data := msg.Encoded.Bytes()
-	// 	packet := NewPacket(&data, msg.Command, msg.Encoded.Len())
-	// 	c.Send(packet)
-	// 	return
-	// }
-	/* d e b u g */
 	if qos > 0 {
 		logger.FDebug(fn, "* [QoS] QoS>0 in [SendMessage].", "qos", qos)
 		puid = (*msg.Id)
@@ -232,53 +241,42 @@ func (c *Connection) SendMessage(pb protobase.MsgInterface, isOwner bool) {
 		msg.Meta.Qos = qos
 		logger.FDebugf("SendMessage", "* [MessageId] id(%d). ", msg.Meta.MessageId)
 	}
-	msg.Encode()
-	data := msg.Encoded.Bytes()
-	packet := packet.NewPacket(&data, msg.Command, msg.Encoded.Len())
-	c.Send(packet)
+	err = msg.Encode()
+	if err != nil {
+		logger.FWarnf(fn, "- [Connection] unable to encode publish packet. error:", err)
+		// TODO
+		// . handle errors by changing the execution flow
+		return err
+	}
+	data = msg.Encoded.Bytes()
+	p = NewPacket(data, msg.Command, msg.Encoded.Len())
+	c.Send(p)
+	return nil
 }
 
-func (c *Connection) SendRedelivery(pb protobase.EDProtocol) {
+func (c *Connection) SendRedelivery(pb protobase.EDProtocol) (err error) {
+	const fn string = "SendRedelivery"
 	var (
 		p      *Packet  = pb.GetPacket().(*Packet)
-		msg    *Publish = protocol.NewPublish()
+		msg    *Publish = NewPublish(p)
 		packet *Packet
 	)
-	/* d e b u g */
-	// 	switch pb.(type) {
-	// case *Publish:
-	// 	msg = pb.(*Publish)
-	// 	msg.Meta.Dup = true
-	// 	msg.Encoded = nil
-	// 	msg.Encode()
-	// }
-	// logger.FDebug("SendRedelivery", "* [Redelivery] sending stored packages to client.")
-	// packet = pb.GetPacket().(*Packet)
-	// c.Send(packet)
-	/* d e b u g */
-	if err := msg.DecodeFrom(p.Data); err != nil {
-		logger.FDebug("sendRedelivery", "- [Redelivery] cannot decode a publish packet.")
+	if msg == nil {
+		logger.FDebug("sendRedelivery", "- [Redelivery] cannot decode a publish packet.", pb)
 	}
+	// if err := msg.DecodeFrom(p.Data); err != nil {
+	// 	logger.FDebug("sendRedelivery", "- [Redelivery] cannot decode a publish packet.")
+	// }
 	msg.Meta.Dup = true
 	logger.FDebugf("SendRedelivery", "* [Redelivery] sending stored packages to client  QoS(%d) Duplicate(%t).", msg.Meta.Qos, msg.Meta.Dup)
-	msg.Encode()
+	err = msg.Encode()
+	if err != nil {
+		logger.FWarnf(fn, "- [Connection] unable to encode publish packet. error:", err)
+		return err
+	}
 	packet = msg.GetPacket().(*Packet)
 	c.Send(packet)
-}
-
-// SetErrorHandler sets the delegate for `ClientInterface` error handler.
-func (c *Connection) SetErrorHandler(fn func(client *protobase.ClientInterface)) {
-	c.ErrorHandler = fn
-}
-
-// GetAuthenticator returns the actual auth subsystem used by the `Connection`.
-func (c *Connection) GetAuthenticator() protobase.AuthInterface {
-	return c.auth
-}
-
-// HandleDefault is to satisfy interface requirements. It is
-// stub routine.
-func (c *Connection) HandleDefault(apckt protobase.PacketInterface) {
+	return nil
 }
 
 // Handle is the entry routine into `Connection`. It is the main loop
@@ -287,106 +285,98 @@ func (c *Connection) Handle() {
 	var (
 		dur   time.Duration = time.Second * time.Duration(c.heartbeat)
 		pchan chan *Packet
+		clid  string
+		stat  uint32
 	)
 	if c.justStarted {
 		atomic.StoreUint32(&c.Status, STATCONNECTING)
-		// - MARK: Wait for Genesis packet.
+		// wait for packet starting 'Genesis' stage
 		pchan = make(chan *Packet, 1)
 		packet, err := c.ReceiveWithTimeout(time.Second*time.Duration(c.connTimeout), pchan)
 		close(pchan)
-		// - MARK: End
 		if err != nil {
-			// NOTE: new
-			// c.handleSendError(err)
 			c.Conn.Close()
 			c.SetStatus(protobase.STATDISCONNECT)
 			c.MarkUnClean()
+			// deadline exceeded
 			c.server.NotifyReject(c)
 			return
 		}
 		ok := c.State.HandleDefault(packet)
 		if !ok {
-			// TODO
-			// c.handleSendError(err)
-			// NOTE: new
 			c.Conn.Close()
 			c.SetStatus(protobase.STATDISCONNECT)
 			c.MarkUnClean()
+			// failed 'Genesis' stage
 			c.server.NotifyReject(c)
 			return
 		} else {
-			// TODO
 			c.AllocateChannels()
 		}
 	}
-	// add client to message store
-	clid := c.client.GetIdentifier()
+	clid = c.client.GetIdentifier()
 	if !c.storage.Exists(clid) {
-		// TODO
-		c.storage.AddClient(clid)
+		c.storage.AddClient(clid) // add client to message store
 	}
-	// mark that connect packet is received
-	c.justStarted = false
+	c.justStarted = false // swap fresh start flag
+	// run I/O coroutines
 	c.corous.Add(3)
 	go c.prioSendHandler()
 	go c.sendHandler()
 	go c.recvHandler()
-	c.client.Connected(nil)
-	atomic.StoreUint32(&c.Status, STATONLINE)
-	c.deadline = timer.NewTimer(dur)
-	// TODO
-	// . maybe let notifyconnected run in a seperate coroutine ????
-	c.server.NotifyConnected(c)
+	c.client.Connected(nil)          // TODO: pass execution to background thread; in case of blocking call.
+	c.SetStatus(STATONLINE)          // connection is established
+	c.deadline = timer.NewTimer(dur) // ping interval
+	c.server.NotifyConnected(c)      // perform blocking call ( ensure serial execution )
 	// main loop
 ML:
 	for {
-		stat := atomic.LoadUint32(&c.Status)
+		stat = c.GetStatus()
 		switch stat {
 		case STATERR:
-			logger.Debug("- [Error] STATERR.")
+			logger.Infof("- [Error][Connection] status is error flag, exiting main loop.")
 			break ML
 		case STATGODOWN:
-			logger.Debug("* [ForceShutdown] received force shutdown, cleaning up ....")
+			logger.Infof("* [ForceShutdown][Connection] received force shutdown, terminating main loop.")
 			break ML
 		}
 		select {
 		case <-c.deadline.C:
-			logger.Debug("- [Connection] DEADLINE, terminating ....", "userId", c.client.GetIdentifier())
-			atomic.StoreUint32(&c.Status, protobase.STATERR)
-			// TODO
-			//  clean up
+			logger.Debug("- [Connection] connection exceeded the deadline. Termination in progress.",
+				"userId", clid)
+			c.SetStatus(protobase.STATERR)
 			break
 		case packet := <-c.RecvChan:
-			// TODO
-			// . reuse session containers
-			// . run this concurrently
 			c.deadline.Reset(dur)
-			logger.Debug("+ [Message] Received .", "userId", c.client.GetIdentifier(), "data", *packet.Data)
+			logger.Debug("+ [Message][Connection] received message on receive channel.",
+				"userId", clid, "data", packet.Data)
 			c.dispatch(packet)
 		case <-c.ErrChan:
-			logger.Warn("- [Shit] went down. Panic.")
+			logger.Warn("- [Error][Connection] error channel contains error. Termination in progress.")
 			break ML
 		}
 	}
 	c.terminate()
-	logger.Debug("* [MLHEAD]**(%s) beginning to wait for coroutines to finish**", c.client.GetIdentifier())
-	atomic.StoreUint32(&c.Status, STATDISCONNECTED)
+	logger.Debugf("* [Connection][Termination]**(%s) waiting for jobs to finish.", clid)
+	c.SetStatus(STATDISCONNECTED)  // connection terminated
 	c.server.NotifyDisconnected(c) // TODO: this should be done either in client or state
 	c.corous.Wait()                // Wait for all coroutines to finish before cleaning up
-	atomic.StoreUint32(&c.Status, STATDISCONNECT)
-	logger.Debugf("+ [MLEND]++(%s) all coroutines are finished, exiting conn++", c.client.GetIdentifier())
+	c.SetStatus(STATDISCONNECT)    // connection remains inactive
+	logger.Debugf("+ [Connection][Termination]++(%s) all jobs are done. Exiting connection handler.", clid)
 }
 
 // ShutDown terminates the connection.
 func (c *Connection) Shutdown() {
+	// TODO
+	// . handle error
 	c.Conn.Close()
-	logger.Debug("* [Event] Shutting down stream.")
+	logger.Debug("* [Event][Termination] shutting down connection.")
 }
 
 // Receive is a routine to read incomming packets from internal connection. It terminates
 // a connection immediately if any abnormalities are detected or packet is malformed. This
 // function blocks on purpose.
-func (c *Connection) receive() (result *[]byte, code byte, length int, err error) {
+func (c *Connection) receive() (result []byte, code byte, length int, err error) {
 	var (
 		pack []byte
 		rl   uint32
@@ -409,7 +399,7 @@ func (c *Connection) receive() (result *[]byte, code byte, length int, err error
 		return nil, 0, 0, err
 	}
 	// NOTE: rl not included
-	return &pack, cmd, 0, nil
+	return pack, cmd, 0, nil
 }
 
 // Precheck validate packets to avoid abnormalities and malformed packet.
@@ -426,7 +416,7 @@ func (c *Connection) precheck(cmd *byte) bool {
 		}
 		return false
 	}
-	return packet.IsValidCommand(msg)
+	return IsValidCommand(msg)
 }
 
 // SendHandler reads from send channel and writes to a socket.
@@ -478,14 +468,12 @@ func (c *Connection) recvHandler() {
 	c.corous.Done()
 }
 
-// HandleSendError is a error handler. It is used for errors
-// caused by sending packets. Currently it terminates the
-// connection.
+// HandleSendError handles 'send(...)' error.
 func (c *Connection) handleSendError(err error) {
 	c.Conn.Close()
 }
 
-// terminate shuts down the connection and undoes all side effects.
+// terminate shuts down the connection undoing side effects.
 func (c *Connection) terminate() {
 	// TODO
 	// . change this and check status by sync/atomic
@@ -516,23 +504,23 @@ func (c *Connection) dispatch(packet protobase.PacketInterface) {
 	// . dispatch via lookup table
 	const fn string = "dispatch"
 	switch packet.GetCode() {
-	case protocol.PCONNECT:
+	case protobase.PCONNECT:
 		c.State.OnCONNECT(packet)
-	case protocol.PCONNACK:
+	case protobase.PCONNACK:
 		c.State.OnCONNACK(packet)
-	case protocol.PQUEUE:
+	case protobase.PQUEUE:
 		c.State.OnQUEUE(packet)
-	case protocol.PSUBSCRIBE:
+	case protobase.PSUBSCRIBE:
 		c.State.OnSUBSCRIBE(packet)
-	case protocol.PSUBACK:
+	case protobase.PSUBACK:
 		c.State.OnSUBACK(packet)
-	case protocol.PPUBLISH:
+	case protobase.PPUBLISH:
 		c.State.OnPUBLISH(packet)
-	case protocol.PPUBACK:
+	case protobase.PPUBACK:
 		c.State.OnPUBACK(packet)
-	case protocol.PPING:
+	case protobase.PPING:
 		c.State.OnPING(packet)
-	case protocol.PDISCONNECT:
+	case protobase.PDISCONNECT:
 		c.State.OnDISCONNECT(packet)
 	default:
 		logger.FWarn(fn, "- [Dispacher] unrecognized cmd code in packet.", packet)

@@ -24,7 +24,6 @@ package networking
 
 import (
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol"
 )
 
 // MARK: Genesis
@@ -102,23 +101,31 @@ func (g *Genesis) HandleDefault(packet protobase.PacketInterface) (status bool) 
 	var (
 		// by default, packet is invalid
 		valid   bool                    = false
-		p       *Connect                = protocol.NewConnect()
-		cack    *Connack                = protocol.NewConnack()
+		p       *Connect                = NewConnect(packet)
+		cack    *Connack                = NewRawConnack()
 		authsys protobase.AuthInterface = g.Conn.GetAuthenticator()
 		creds   protobase.CredentialsInterface
 		rpacket *Packet
 		newcl   protobase.ClientInterface
 	)
-	logger.FDebug("HandleDefault", "* [Packet] content of raw packet.", *packet.GetData())
+	logger.FDebug("HandleDefault", "* [Packet] content of raw packet.", packet.GetData())
 	// terminate immediately if packet is malformed or invalid.
-	if err := p.DecodeFrom(packet.GetData()); err != nil {
-		logger.Debug("- [Fatal] invalid connection packet in [Genesis].", err)
+	if p == nil {
+		logger.Debug("- [Fatal] invalid connection packet in [Genesis].", packet)
 		// TODO
 		//  undo side effects
 		g.gotFirstPacket = false
 		g.cleanUp()
 		return false
 	}
+	// if err := p.DecodeFrom(packet.GetData()); err != nil {
+	// 	logger.Debug("- [Fatal] invalid connection packet in [Genesis].", err)
+	// 	// TODO
+	// 	//  undo side effects
+	// 	g.gotFirstPacket = false
+	// 	g.cleanUp()
+	// 	return false
+	// }
 	logger.FDebug("HandleDefault", "* [Packet] connection packet content.", p.String())
 	// connection is established
 	// push into the next state
@@ -136,7 +143,7 @@ func (g *Genesis) HandleDefault(packet protobase.PacketInterface) (status bool) 
 	// NOTE:
 	// . check error explicitely
 	if valid, err = authsys.CanAuthenticate(creds); valid {
-		cack.SetResultCode(RESPOK)
+		cack.SetResultCode(protobase.RESPOK)
 		cack.Encode()
 		rpacket = cack.GetPacket().(*Packet)
 		g.Conn.SetClient(newcl)
@@ -158,7 +165,7 @@ func (g *Genesis) HandleDefault(packet protobase.PacketInterface) (status bool) 
 		g.cleanUp()
 		return true
 	} else {
-		cack.SetResultCode(RESPFAIL)
+		cack.SetResultCode(protobase.RESPFAIL)
 		cack.Encode()
 		rpacket = cack.GetPacket().(*Packet)
 		g.Conn.SetClient(newcl)

@@ -83,15 +83,20 @@ func (o *Online) OnCONNACK(packet protobase.PacketInterface) {
 // onPUBLISH is the handler for `Publish` packets.
 func (o *Online) OnPUBLISH(packet protobase.PacketInterface) {
 	var (
-		publish  *Publish = protocol.NewPublish()
+		publish  *Publish = protocol.NewPublish(packet)
 		cid      string   = o.client.GetIdentifier()
 		userType protobase.AuthUserType
 	)
-	if err := publish.DecodeFrom(packet.GetData()); err != nil {
-		logger.Debugf("- [DecodeErr(onPublish)] Unable to decode data for Client(%s).", err, cid)
+	if publish == nil {
+		logger.Debugf("- [DecodeErr(onPublish)] Unable to decode data for Client(%s).", packet, cid)
 		o.Shutdown()
 		return
 	}
+	// if err := publish.DecodeFrom(packet.GetData()); err != nil {
+	// 	logger.Debugf("- [DecodeErr(onPublish)] Unable to decode data for Client(%s).", err, cid)
+	// 	o.Shutdown()
+	// 	return
+	// }
 	userType, err := o.Conn.auth.GetUserType(cid)
 	if err != nil {
 		logger.Debugf("onPUBLISH", "- [Packet] unable to find associated User Type for Client(%s).", cid)
@@ -112,6 +117,7 @@ func (o *Online) OnPUBLISH(packet protobase.PacketInterface) {
 		}
 		// TDOO
 		// . refactor hard-coded permissions
+		// . query permissions with flags
 		if !role.HasPerm("can", "publish", publish.Topic) {
 			logger.Debugf("onPUBLISH", "- [Packet] unable to find corresponding permission ( direct ) for Client(%s).", cid)
 			o.Shutdown()
@@ -121,12 +127,12 @@ func (o *Online) OnPUBLISH(packet protobase.PacketInterface) {
 	if stat := o.Conn.storage.AddInbound(cid, publish); stat == false {
 		logger.Debug("? [NOTICE] addinbound returned false (online/publish).")
 	}
-	var puback *Puback = protocol.NewPuback()
+	var puback *Puback = protocol.NewRawPuback()
 	logger.FDebugf("onPUBLISH", "+ [Packet] received with [QoS] %d.", int(publish.Meta.Qos))
 	if publish.Meta.Qos > 0 {
 		puback.Meta.Qos, puback.Meta.MessageId = publish.Meta.Qos, publish.Meta.MessageId
-		if puback.Meta.Qos > protocol.MAXQoS {
-			puback.Meta.Qos = protocol.MAXQoS
+		if puback.Meta.Qos > protobase.MAXQoS {
+			puback.Meta.Qos = protobase.MAXQoS
 		}
 		if err := puback.Encode(); err != nil {
 			logger.FError("onPUBLISH", "- [ONLINE] Error while encoding puback.")
@@ -149,15 +155,20 @@ func (o *Online) OnPUBLISH(packet protobase.PacketInterface) {
 // onSUBSCRIBE is the handler for `Subscribe` packets.
 func (o *Online) OnSUBSCRIBE(packet protobase.PacketInterface) {
 	var (
-		subscribe *Subscribe = protocol.NewSubscribe()
+		subscribe *Subscribe = protocol.NewSubscribe(packet)
 		cid       string     = o.client.GetIdentifier()
 		userType  protobase.AuthUserType
 	)
-	if err := subscribe.DecodeFrom(packet.GetData()); err != nil {
-		logger.Debugf("- [DecodeErr(onSubscribe)] Unable to decode data for Client(%s).", err, cid)
+	if subscribe == nil {
+		logger.Debugf("- [DecodeErr(onSubscribe)] Unable to decode data for Client(%s).", packet, cid)
 		o.Shutdown()
 		return
 	}
+	// if err := subscribe.DecodeFrom(packet.GetData()); err != nil {
+	// 	logger.Debugf("- [DecodeErr(onSubscribe)] Unable to decode data for Client(%s).", err, cid)
+	// 	o.Shutdown()
+	// 	return
+	// }
 	userType, err := o.Conn.auth.GetUserType(cid)
 	if err != nil {
 		logger.Debugf("onSUBSCRIBE", "- [Packet] unable to find associated User Type for Client(%s).", cid)
@@ -186,12 +197,12 @@ func (o *Online) OnSUBSCRIBE(packet protobase.PacketInterface) {
 	if stat := o.Conn.storage.AddInbound(cid, subscribe); stat == false {
 		logger.Debug("? [NOTICE] addinbound returned false (online/subscribe).")
 	}
-	var suback *Suback = protocol.NewSuback()
+	var suback *Suback = protocol.NewRawSuback()
 	logger.FDebugf("onSUBSCRIBE", "+ [Packet] received with [QoS] %d.", int(subscribe.Meta.Qos))
 	if subscribe.Meta.Qos > 0 {
 		suback.Meta.Qos, suback.Meta.MessageId = subscribe.Meta.Qos, subscribe.Meta.MessageId
-		if suback.Meta.Qos > protocol.MAXQoS {
-			suback.Meta.Qos = protocol.MAXQoS
+		if suback.Meta.Qos > protobase.MAXQoS {
+			suback.Meta.Qos = protobase.MAXQoS
 		}
 		if err := suback.Encode(); err != nil {
 			logger.FError("onSUBSCRIBE", "- [ONLINE] Error while encoding suback.")
@@ -230,13 +241,17 @@ func (o *Online) OnPUBACK(packet protobase.PacketInterface) {
 	logger.FDebug("onPUBACK", "+ [PubAck] received.")
 	var (
 		clid string  = o.Conn.GetClient().GetIdentifier()
-		pa   *Puback = protocol.NewPuback()
+		pa   *Puback = protocol.NewPuback(packet)
 		uid  uuid.UUID
 	)
-	if err := pa.DecodeFrom(packet.GetData()); err != nil {
-		logger.FDebug("onPUBACK", "- [PubAck] uanble to decode .", "error", err)
+	if pa == nil {
+		logger.FDebug("onPUBACK", "- [PubAck] uanble to decode .", "error", packet)
 		return
 	}
+	// if err := pa.DecodeFrom(packet.GetData()); err != nil {
+	// 	logger.FDebug("onPUBACK", "- [PubAck] uanble to decode .", "error", err)
+	// 	return
+	// }
 	oidstore := o.Conn.storage.GetIDStoreO(clid)
 	msgid := pa.Meta.MessageId
 	uid, ok := oidstore.GetUUID(msgid)

@@ -24,9 +24,10 @@
 package networking
 
 import (
+	"errors"
+
 	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/protobase"
-	"github.com/mitghi/protox/protocol/packet"
 )
 
 // Log is central logger
@@ -36,6 +37,11 @@ var logger protobase.LoggingInterface
 func init() {
 	logger = logging.NewLogger("Networking")
 }
+
+// Error messages
+var (
+	ECLBCONNINVALDISCONN error = errors.New("CLBConn: disconnect req while not online.")
+)
 
 // Authorization status codes
 const (
@@ -56,15 +62,12 @@ const (
 	STATGODOWN       uint32 = 7
 )
 
-// Connection response codes
-const (
-	TMP_RESPOK = 0x10 // TODO: change this later
-	RESNON     = 0x00 // no response code is set yet
-	RESPFAIL   = 0x01
-	RESPOK     = 0x02
-	RESPNOK    = 0x03
-	RESPERR    = 0x04
-)
-
-// Packet is alias type for 'packet.Packet'
-type Packet = packet.Packet
+// // Connection response codes
+// const (
+// 	TMP_RESPOK = 0x10 // TODO: change this later
+// 	RESNON     = 0x00 // no response code is set yet
+// 	RESPFAIL   = 0x01
+// 	RESPOK     = 0x02
+// 	RESPNOK    = 0x03
+// 	RESPERR    = 0x04
+// )

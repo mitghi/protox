@@ -1,7 +1,15 @@
 package networking
 
 import (
+	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
+	_packet "github.com/mitghi/protox/protocol/packet"
+)
+
+// Aliases
+type (
+	Packet = _packet.Packet
+	PI     = protobase.PacketInterface
 )
 
 // Packet alias
@@ -14,16 +22,36 @@ type (
 	Suback      = protocol.Suback
 	Publish     = protocol.Publish
 	Puback      = protocol.Puback
+	Ping        = protocol.Ping
+	Pong        = protocol.Pong
 )
 
 // Packet constructors
 var (
-	NewConnect     func() *Connect     = protocol.NewConnect
-	NewDisconnect  func() *Disconnect  = protocol.NewDisconnect
-	NewConnack     func() *Connack     = protocol.NewConnack
+	NewPacket     func([]byte, byte, int) *Packet = _packet.NewPacket
+	NewConnect    func(PI) *Connect               = protocol.NewConnect
+	NewDisconnect func(PI) *Disconnect            = protocol.NewDisconnect
+	NewConnack    func(PI) *Connack               = protocol.NewConnack
+	NewSubscribe  func(PI) *Subscribe             = protocol.NewSubscribe
+	NewSuback     func(PI) *Suback                = protocol.NewSuback
+	NewPublish    func(PI) *Publish               = protocol.NewPublish
+	NewPuback     func(PI) *Puback                = protocol.NewPuback
+	NewPing       func(PI) *Ping                  = protocol.NewPing
+	NewPong       func(PI) *Pong                  = protocol.NewPong
+
 	NewConnackOpts func() *ConnackOpts = protocol.NewConnackOpts
-	NewSubscribe   func() *Subscribe   = protocol.NewSubscribe
-	NewSuback      func() *Suback      = protocol.NewSuback
-	NewPublish     func() *Publish     = protocol.NewPublish
-	NewPuback      func() *Puback      = protocol.NewPuback
+
+	NewRawConnect    func() *Connect    = protocol.NewRawConnect
+	NewRawDisconnect func() *Disconnect = protocol.NewRawDisconnect
+	NewRawConnack    func() *Connack    = protocol.NewRawConnack
+	NewRawSubscribe  func() *Subscribe  = protocol.NewRawSubscribe
+	NewRawSuback     func() *Suback     = protocol.NewRawSuback
+	NewRawPublish    func() *Publish    = protocol.NewRawPublish
+	NewRawPuback     func() *Puback     = protocol.NewRawPuback
+	NewRawPing       func() *Ping       = protocol.NewRawPing
+	NewRawPong       func() *Pong       = protocol.NewRawPong
+)
+
+var (
+	IsValidCommand func(byte) bool = _packet.IsValidCommand
 )

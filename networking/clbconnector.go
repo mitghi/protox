@@ -34,7 +34,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
-	"github.com/mitghi/protox/protocol/packet"
 	"github.com/mitghi/timer"
 )
 
@@ -46,9 +45,16 @@ var (
 	ECLBSendFailure = errors.New("protocol(clientConnector): unable to send packet.")
 )
 
+// Constants
+var (
+	cDefaultSleepTime time.Duration = time.Millisecond * 2
+)
+
 type CLBConnection struct {
 	// TODO
 	// . check alignment
+	// . add packet processor delegate
+	// . add callback manager
 	*protocon
 
 	clock          *sync.RWMutex
@@ -84,11 +90,10 @@ func dialRemoteAddr(addr string, tlsopts *tls.Config, isTLS bool) (net.Conn, err
 func NewClientConnection(addr string) (clbc *CLBConnection) {
 	// TODO
 	// . add options
-	// . remove hard-coded values
 	clbc = &CLBConnection{
 		protocon: &protocon{
-			// NOTE
-			// . connection is not initialized on purpose
+			// NOTE:
+			// . connection is purposefully not initialized
 			Conn:            nil,
 			Reader:          nil,
 			Writer:          nil,
@@ -101,7 +106,7 @@ func NewClientConnection(addr string) (clbc *CLBConnection) {
 		},
 		clock:          &sync.RWMutex{},
 		clblock:        &sync.RWMutex{},
-		heartbeat:      2,
+		heartbeat:      CCLBConnectionDefaultHeartbeat,
 		pinger:         nil,
 		client:         nil,
 		storage:        nil,
@@ -136,84 +141,93 @@ func (clbc *CLBConnection) GetConnection() net.Conn {
 }
 
 // SendMessage creates a new packet and sends it to send channel.
-func (clbc *CLBConnection) SendMessage(pb protobase.MsgInterface) {
+func (clbc *CLBConnection) SendMessage(pb protobase.MsgInterface) (err error) {
 	const fn = "SendMessage"
 	var (
 		envelope protobase.MsgEnvelopeInterface = pb.Envelope()
 		topic    string                         = envelope.Route()
 		message  []byte                         = envelope.Payload()
 
-		msg  *Publish = protocol.NewPublish()
+		msg  *Publish = protocol.NewRawPublish()
 		qos  byte     = pb.QoS()
 		puid uuid.UUID
+
+		data   []byte
+		packet *Packet
 	)
 	msg.Message = ([]byte)(message)
 	msg.Topic = topic
 	if qos > 0 {
 		logger.FDebug(fn, "* [QoS] QoS>0 in [SendMessage].", "qos", qos)
 		puid = (*msg.Id)
-		logger.FDebugf("SendMessage", "* [SendMessage] publish QoS(%b), message direction(%b).", pb.QoS(), pb.Dir())
+		logger.FDebugf(fn, "* [SendMessage] publish QoS(%b), message direction(%b).", pb.QoS(), pb.Dir())
 		if !clbc.storage.AddOutbound(msg) {
 			logger.Warn("- [SendMessage ]unable to add outbound message.")
 		}
 		idstore := clbc.storage.GetIDStoreO()
 		msg.Meta.MessageId = idstore.GetNewID(puid)
-		logger.FDebugf("SendMessage", "* [MessageId] messageid(%d) in [SendMessage].", msg.Meta.MessageId)
+		logger.FDebugf(fn, "* [MessageId] messageid(%d) in [SendMessage].", msg.Meta.MessageId)
 	}
-	msg.Encode()
-	data := msg.Encoded.Bytes()
-	packet := packet.NewPacket(&data, msg.Command, msg.Encoded.Len())
+	err = msg.Encode()
+	if err != nil {
+		return err
+	}
+	// data = msg.Encoded.Bytes()
+	data = msg.GetBytes()
+	packet = NewPacket(data, msg.Command, msg.Encoded.Len())
 	clbc.Send(packet)
+	return nil
 }
 
-func (clbc *CLBConnection) Disconnect() error {
-	/* d e b u g */
-	// if clbc.GetStatus() == protobase.STATONLINE {
-	// 	clbc.ShouldTerminate <- struct{}{}
-	// 	return nil
-	// }
-	/* d e b u g */
+func (clbc *CLBConnection) Disconnect() (err error) {
+	const fn string = "Disconnect"
 	if clbc.GetStatus() == protobase.STATONLINE {
-		_ = clbc.sendDisconnect()
+		err = clbc.sendDisconnect()
+		if err != nil {
+			logger.FDebug(fn, "- [CLBConnection] unable to disconnect. err:", err)
+		}
 		clbc.SetStatus(protobase.STATGODOWN)
-		return nil
+		return err
 	}
-	return errors.New("CLBConn: disconnect req while not online.")
+	logger.FWarn(fn, "- [CLBConnection] invalid connection status to disconnect.")
+	return ECLBCONNINVALDISCONN
 }
 
-func (clbc *CLBConnection) sendDisconnect() error {
-	disconn := protocol.NewDisconnect()
-	disconn.Encode()
-	packet := disconn.GetPacket().(*Packet)
-	/* d e b u g */
-	// if err := clbc.protocon.Send(packet); err != nil {
-	// 	logger.FDebug("sendDisconnect", "cannot send disconnect packet", err)
-	// 	return err
-	// }
-	/* d e b u g */
+func (clbc *CLBConnection) sendDisconnect() (err error) {
+	const fn string = "sendDisconnect"
+	var (
+		disconn *Disconnect = protocol.NewRawDisconnect()
+		packet  *Packet
+	)
+	err = disconn.Encode()
+	if err != nil {
+		logger.FWarnf(fn, "- [CLBConnection] unable to encode disconnect packet. error:", err)
+		return err
+	}
+	packet = disconn.GetPacket().(*Packet)
 	clbc.protocon.Send(packet)
 	return nil
 }
 
-func (clbc *CLBConnection) sendPing() {
-	ping := protocol.NewPing()
-	ping.Encode()
-	packet := ping.GetPacket().(*Packet)
-	/* d e b u g */
-	// if err := clbc.Send(packet); err != nil {
-	// 	logger.FDebug("sendPing", "cannot send ping packet", err)
-	// 	return err
-	// }
-	/* d e b u g */
+func (clbc *CLBConnection) sendPing() (err error) {
+	const fn string = "sendPing"
+	var (
+		ping   *Ping = protocol.NewRawPing()
+		packet *Packet
+	)
+	err = ping.Encode()
+	if err != nil {
+		logger.FWarnf(fn, "- [CLBConnection] unable to encode ping packet. error:", err)
+		return err
+	}
+	packet = ping.GetPacket().(*Packet)
 	clbc.Send(packet)
+	return nil
 }
 
 func (clbc *CLBConnection) Send(packet *Packet) {
 	clbc.SendLock.Lock()
 	if clbc.SendChan != nil {
-		/* d e b u g */
-		// NOTE: IMPORTANT: NEW
-		/* d e b u g */
 		if clbc.pinger != nil {
 			clbc.pinger.Reset(time.Duration(time.Second * time.Duration(clbc.heartbeat)))
 		}
@@ -248,17 +262,10 @@ func (clbc *CLBConnection) sendHandler() {
 			return
 		case _, ok := <-clbc.pinger.C:
 			if !ok {
-				logger.FDebug("Handle", "- [HeartBeat] cannot get a new ping from pinger.")
+				logger.FDebug(fname, "- [HeartBeat] cannot get a new ping from pinger.")
 				return
 			}
-			clbc.sendPing()
-			/* d e b u g */
-			// if clbc.sendPing(); err != nil {
-			// 	logger.Debug("- [HeartBeat] error while sending ping packet.", err)
-			// 	clbc.SetStatus(STATERR)
-			// 	return
-			// }
-			/* d e b u g */
+			_ = clbc.sendPing()
 			logger.Info("* [CLBConnection] sending ping.")
 		}
 		clbc.pinger.Reset(dur)
@@ -304,13 +311,6 @@ func (clbc *CLBConnection) uniSendHandler() {
 				logger.FDebug("Handle", "- [HeartBeat] cannot get a new ping from pinger.")
 				return
 			}
-			// NOTE
-			// . this has changed, sendPing() never returns an error
-			// if err := clbc.sendPing(); err != nil {
-			// 	logger.Debug("- [HeartBeat] error while sending ping packet.", err)
-			// 	clbc.SetStatus(STATERR)
-			// 	return
-			// }
 			clbc.sendPing()
 			logger.Info("* [CLBConnection] sending ping.")
 		case <-clbc.cendch:
@@ -345,18 +345,20 @@ func (clbc *CLBConnection) prioSendHandler() {
 }
 
 func (clbc *CLBConnection) ContinueFlag(f bool) {
+	/* critical section */
 	clbc.clock.Lock()
 	clbc.shouldContinue = f
 	clbc.clock.Unlock()
+	/* critical section - end */
 }
 
 // Handle is the entry routine into `Connection`. It is the main loop
 // for handling initial logics/allocating and passing data to different stages.
-func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
+func (clbc *CLBConnection) Handle(_ protobase.PacketInterface) {
 	// initalize variables regardless of
 	// possibility of early return
 	// variable definition instructions
-	// gets rearranged by the compiler** ( TODO : dig into golang source code)
+	// gets rearranged by the compiler** ( TODO : dig into golang source code )
 	var (
 		dur  time.Duration = time.Second * time.Duration(clbc.heartbeat) // heartbeat interval
 		ch   chan *Packet                                                // timeout channel ( initial packet )
@@ -406,7 +408,7 @@ func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
 	// set timer to routin ping delivery
 	// run I/O coroutines
 	// finalize setup
-	clbc.sendPing()
+	_ = clbc.sendPing()
 	// prevent data race by concurrent access
 	/* critical section */
 	clbc.clock.Lock()
@@ -415,10 +417,6 @@ func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
 	clbc.corous.Add(2)
 	go clbc.recvHandler()
 	go clbc.uniSendHandler()
-	/* d e b u g */
-	// go clbc.prioSendHandler()
-	// go clbc.sendHandler()
-	/* d e b u g */
 	if !clbc.justStarted {
 		clbc.AllocateChannels()
 		clbc.cendch = make(chan struct{})
@@ -430,9 +428,9 @@ func (clbc *CLBConnection) Handle(apckt protobase.PacketInterface) {
 	go func() {
 		// TODO
 		// . remove hard-coded duration
-		time.Sleep(time.Millisecond * 2)
+		time.Sleep(cDefaultSleepTime)
 		clbc.SendRedelivery()
-		_ = clbc.client.Connected(clbc.stateOpts[protocol.CCONNACK])
+		_ = clbc.client.Connected(clbc.stateOpts[protobase.CCONNACK])
 	}()
 	clbc.clock.Unlock()
 	/* critical section - end */
@@ -443,7 +441,6 @@ ML:
 		switch stat {
 		case STATERR:
 			logger.Debug("- [Error] STATERR.")
-
 			break ML
 		case STATGODOWN:
 			logger.Debug("* [ForceShutdown] received force shutdown, cleaning up ....")
@@ -474,22 +471,17 @@ ML:
 			// TODO
 			// . reuse session containers
 			// . run this concurrently
-			logger.Debug("+ [Message] Received .", "userId", clbc.client.GetIdentifier(), "data", *packet.Data)
+			logger.Debug("+ [Message] Received .", "userId", clbc.client.GetIdentifier(), "data", packet.Data)
 			clbc.dispatch(packet)
 		case <-clbc.ErrChan:
 			logger.Warn("- [Shit] went down. Panic.")
 			break ML
 		default:
-			// NOTE
-			// . this changed from 20 ms to 2ms
 			time.Sleep(time.Millisecond * 2)
 		}
 	}
 	clbc.pinger.Stop()
 	clbc.terminate()
-	// NOTE
-	// . this has changed
-	// go func() { clbc.client.Disconnected(nil) }()
 	switch stat {
 	case protobase.STATGODOWN, protobase.STATDISCONNECT:
 		clbc.client.Disconnected(protobase.PUDisconnect)
@@ -498,7 +490,6 @@ ML:
 	default:
 		logger.FDebug("Handle", "- [Handler/State] Unknown state (neither statgodown or staterr)")
 	}
-
 	logger.Debug("before corous")
 	clbc.corous.Wait()
 	logger.Debug("after corous")
@@ -510,7 +501,15 @@ func (clbc *CLBConnection) SetClient(cl protobase.ClientInterface) {
 
 // ShutDown terminates the connection.
 func (clbc *CLBConnection) Shutdown() {
-	clbc.Conn.Close()
+	const fn string = "Shutdown"
+	var (
+		err error
+	)
+	err = clbc.Conn.Close()
+	if err != nil {
+		logger.FWarnf(fn, "- [CLBConnection] unable to close the connection. error:", err)
+		return
+	}
 	logger.Debug("* [Event] Shutting down stream.")
 }
 
@@ -536,23 +535,23 @@ func (clbc *CLBConnection) terminate() {
 // dispatch is responsible to call correct methods on state structures.
 func (clbc *CLBConnection) dispatch(packet protobase.PacketInterface) {
 	switch packet.GetCode() {
-	case protocol.PCONNECT:
+	case protobase.PCONNECT:
 		clbc.State.OnCONNECT(packet)
-	case protocol.PCONNACK:
+	case protobase.PCONNACK:
 		clbc.State.OnCONNACK(packet)
-	case protocol.PSUBSCRIBE:
+	case protobase.PSUBSCRIBE:
 		clbc.State.OnSUBSCRIBE(packet)
-	case protocol.PSUBACK:
+	case protobase.PSUBACK:
 		clbc.State.OnSUBACK(packet)
-	case protocol.PPUBLISH:
+	case protobase.PPUBLISH:
 		clbc.State.OnPUBLISH(packet)
-	case protocol.PPUBACK:
+	case protobase.PPUBACK:
 		clbc.State.OnPUBACK(packet)
-	case protocol.PPING:
+	case protobase.PPING:
 		clbc.State.OnPING(packet)
-	case protocol.PPONG:
+	case protobase.PPONG:
 		clbc.State.OnPONG(packet)
-	case protocol.PDISCONNECT:
+	case protobase.PDISCONNECT:
 		clbc.State.OnDISCONNECT(packet)
 		// NOTE: Rest of protocol data suite should be integrated in this case
 	}
@@ -618,72 +617,88 @@ func (clbc *CLBConnection) SendRedelivery() {
 		// clid     string = clbc.GetClient().GetIdentifier()
 		outbound []protobase.EDProtocol
 		packet   *Packet
+		err      error
 	)
 	logger.FDebug(fn, "+ [Redeliver] starting redelivery.")
 	outbound = clbc.storage.GetAllOut()
 	logger.FDebug(fn, "[OUTBOUNDS]", outbound)
 	for _, p := range outbound {
-		// fmt.Printf("client %s has this packet %+v\n", clid, p)
 		if clbc.GetStatus() == protobase.STATONLINE {
-
 			switch p.(type) {
 			case *Publish:
 				tmp := p.(*Publish)
 				tmp.Meta.Dup = true
+				/* d e b u g */
 				// tmp.Meta.Qos = p.QoS()
+				/* d e b u g */
 				tmp.Encoded = nil
-				tmp.Encode()
+				err = tmp.Encode()
+				if err != nil {
+					logger.FWarnf(fn, "- [CLBConnection] unable to encode publish packet. error:", err)
+				}
 			case *Subscribe:
 				logger.Warn("- [sendRedelivery] PACKET TYPE IS [Subscribe]")
 			default:
 				logger.Warn("- [sendRedelivery] UNKNOWN PACKET TYPE, TODO:")
 			}
-
 			packet = p.GetPacket().(*Packet)
-			logger.FDebug("SendRedelivery", "+ [Redliver] undelivered packages are in their path to broker.")
+			logger.FDebug(fn, "+ [Redliver] undelivered packages are in their path to broker.")
 			clbc.Send(packet)
 		}
 	}
 }
 
 func (clbc *CLBConnection) MakeEnvelope(route string, payload []byte, qos byte, messageId uint16, dir protobase.MsgDir) protobase.MsgInterface {
-	var box protobase.MsgInterface = protocol.NewMsgBox(qos, messageId, dir, protocol.NewMsgEnvelope(route, payload))
+	var (
+		box protobase.MsgInterface = protocol.NewMsgBox(qos, messageId, dir, protocol.NewMsgEnvelope(route, payload))
+	)
 	return box
 }
 
 // - MARK: Protocol communication routines section.
 
 func (clbc *CLBConnection) Publish(topic string, message []byte, qos byte, fn func(protobase.OptionInterface, protobase.MsgInterface)) (err error) {
-	logger.Debugf("* [Publish/QoS] qos is (%b) [Topic] is (%s) [Message] is (%s).", qos, topic, message)
-	clid := clbc.GetClient().GetIdentifier()
-	pb := protocol.NewPublish()
-	puid := (*pb.Id)
+	const _fn string = "Publish"
+	var (
+		clid    string            = clbc.GetClient().GetIdentifier()
+		pb      *protocol.Publish = protocol.NewRawPublish()
+		puid    uuid.UUID
+		idstore protobase.MSGIDInterface
+	)
+	logger.FDebugf(_fn, "* [Publish/QoS][CLBConnection] qos is (%b) [Topic] is (%s) [Message] is (%s).", qos, topic, message)
+	puid = (*pb.Id)
+	// set topic and message
 	pb.Topic = topic
 	pb.Message = message
-
+	// handle quality of service > 0
 	if qos > 0 {
 		pb.Meta.Qos = qos
-		idstore := clbc.storage.GetIDStoreO()
+		idstore = clbc.storage.GetIDStoreO()
 		pb.Meta.MessageId = idstore.GetNewID(puid)
-		logger.Debugf("* [Publish<-] with id (%d).", pb.Meta.MessageId)
+		logger.FDebugf(_fn, "* [Publish<-]CLBConnection] with id (%d).", pb.Meta.MessageId)
 		if !clbc.storage.AddOutbound(pb) {
-			logger.Warn("? [NOTICE] unable to add outbound packet to [MessageBox].", "userId", clid)
+			logger.FWarn(_fn, "- [NOTICE][CLBConnection] unable to add outbound packet to [MessageBox] for userId(%s).", clid)
+			return ECLBSendFailure
 		}
 		clbc.clblock.Lock()
 		clbc.clbpub[pb.Meta.MessageId] = fn
 		clbc.clblock.Unlock()
 	}
-	pb.Encode()
+	err = pb.Encode()
+	if err != nil {
+		logger.FWarnf(_fn, "- [CLBConnection] unable to encode publish packet. error:", err)
+		return ECLBSendFailure
+	}
 	packet := pb.GetPacket().(*Packet)
 	if clbc.GetStatus() == STATONLINE {
 		clbc.Send(packet)
-		logger.Infof("* [Publish<-] Publishing [Message](%s) -> [Topic](%s) with [QoS](%b), [MessageId](%d).", message, topic, qos, pb.Meta.MessageId)
+		logger.Infof("* [Publish<-] Publishing [Message](%s) -> [Topic](%s) with [QoS](%b), [MessageId](%d).",
+			message, topic, qos, pb.Meta.MessageId)
 		if qos == 0 {
 			fn(nil, clbc.MakeEnvelope(topic, message, qos, pb.Meta.MessageId, protobase.MDInbound))
 		}
 	} else {
-		// NOTE:
-		// . drop packages when qos == 0
+		// drop packets (QoS == 0)
 		logger.FWarn("Publish", "- [Publish] dropping packet due to status.")
 		return ECLBSendFailure
 	}
@@ -691,44 +706,58 @@ func (clbc *CLBConnection) Publish(topic string, message []byte, qos byte, fn fu
 }
 
 func (clbc *CLBConnection) Subscribe(topic string, qos byte, fn func(protobase.OptionInterface, protobase.MsgInterface)) (err error) {
-	logger.Debugf("* [Subscribe/QoS] qos is (%b) [Topic] is (%s).", qos, topic)
-	clid := clbc.GetClient().GetIdentifier()
-	sb := protocol.NewSubscribe()
-	puid := (*sb.Id)
+	const _fn string = "Subscribe"
+	var (
+		clid    string                   = clbc.GetClient().GetIdentifier() // client identifier
+		sb      *Subscribe               = protocol.NewRawSubscribe()       // subscribe packet
+		puid    uuid.UUID                                                   // packet UID
+		idstore protobase.MSGIDInterface                                    // identifier provider
+		packet  *Packet                                                     // empty packet for manipulating
+	)
+	logger.FDebugf(_fn, "* [Subscribe/QoS] qos is (%b) [Topic] is (%s).", qos, topic)
+	puid = (*sb.Id)
+	// set the topic
 	sb.Topic = topic
-
 	if qos > 0 {
 		sb.Meta.Qos = qos
-		idstore := clbc.storage.GetIDStoreO()
+		idstore = clbc.storage.GetIDStoreO()
 		sb.Meta.MessageId = idstore.GetNewID(puid)
-		logger.Debugf("* [Subscribe->] with id (%d).", sb.Meta.MessageId)
+		logger.FDebugf(_fn, "* [Subscribe->][CLBConnection] with id (%d).", sb.Meta.MessageId)
 		if !clbc.storage.AddOutbound(sb) {
-			logger.Debugf("? [NOTICE] unable to add outbound packet to [MessageBox].", "userId", clid)
+			logger.FWarn(_fn, "- [NOTICE][CLBConnection] unable to add outbound packet to [MessageBox] for userId(%s).", clid)
+			return ECLBSendFailure
 		}
+		// write to callback map
 		clbc.clblock.Lock()
 		clbc.clbsub[sb.Meta.MessageId] = fn
 		clbc.clblock.Unlock()
 	}
-	sb.Encode()
-	packet := sb.GetPacket().(*Packet)
+	err = sb.Encode()
+	if err != nil {
+		logger.FWarnf(_fn, "- [CLBConnection] unable to encode subscribe packet. error:", err)
+		return ECLBSendFailure
+	}
+	packet = sb.GetPacket().(*Packet)
 	if clbc.GetStatus() == STATONLINE {
 		clbc.Send(packet)
-		logger.Infof("* [Subscribe->] Subscribing to [Topic](%s) with [QoS](%b), [MessageId](%d).", topic, qos, sb.Meta.MessageId)
+		logger.Infof(_fn, "* [Subscribe->] Subscribing to [Topic](%s) with [QoS](%b), [MessageId](%d).",
+			topic, qos, sb.Meta.MessageId)
 		if qos == 0 {
 			fn(nil, clbc.MakeEnvelope(topic, nil, qos, sb.Meta.MessageId, protobase.MDInbound))
 		}
 	} else {
-		// NOTE:
-		// . drop packages when qos == 0
-		logger.FWarn("Publish", "- [Subscribe] dropping packet due to status.")
+		// drop packets (QoS == 0)
+		logger.FWarn(_fn, "- [Subscribe] dropping packet due to status.")
 		return ECLBSendFailure
 	}
 	return nil
 }
 
-// TODO
 func (clbc *CLBConnection) Queue(action protobase.QAction, address string, returnPath string, mark []byte, message []byte) (err error) {
-	logger.Debugf("* [Queue] invoking with Address(%s), ReturnPath(%s), Mark(%s), Message(%s).", address, returnPath, string(mark), string(message))
+	// TODO
+	const _fn string = "Queue"
+	logger.FDebugf(_fn, "* [Queue][CLBConnection] invoking with Address(%s), ReturnPath(%s), Mark(%s), Message(%s).",
+		address, returnPath, string(mark), string(message))
 	var (
 		q *protocol.Queue = protocol.NewQueue()
 		p *Packet
