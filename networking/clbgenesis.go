@@ -221,9 +221,7 @@ func (cg *CGenesis) HandleDefault(packet protobase.PacketInterface) (ok bool) {
 	Conn.protocon.RUnlock()
 	/* critical section - end */
 	if Conn.protocon.Conn == nil {
-		// TODO
-		// . pass connection options (tls) to dialRemoteAddr
-		if c, err := dialRemoteAddr(addr, nil, false); err != nil {
+		if c, err := cg.Conn.dialRemoteAddr(addr, true); err != nil {
 			logger.FDebug(fn, "- [TCPConnect] cannot connect to remote addr.", "error", err)
 			ok = false
 			cg.client.Disconnected(protobase.PUSocketError)

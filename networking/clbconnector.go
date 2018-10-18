@@ -63,6 +63,7 @@ type CLBConnection struct {
 	storage        protobase.MessageBox
 	client         protobase.ClientInterface
 	pinger         *timer.Timer
+	tlsconf        *tls.Config
 	heartbeat      int
 	justStarted    bool
 	shouldContinue bool
@@ -71,13 +72,32 @@ type CLBConnection struct {
 	clbsub         map[uint16]func(protobase.OptionInterface, protobase.MsgInterface)
 }
 
-func dialRemoteAddr(addr string, tlsopts *tls.Config, isTLS bool) (net.Conn, error) {
+func (cg *CLBConnection) SetupTLSConfig(certPath string, keyPath string) error {
+	var (
+		cert    tls.Certificate
+		tlsconf *tls.Config
+		err     error
+	)
+	cert, err = tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		logger.Fatalf("- [CLBConnector] loadkeys: %s", err)
+		return err
+	}
+	tlsconf = &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+	cg.tlsconf = tlsconf
+	return nil
+}
+
+func (cg *CLBConnection) dialRemoteAddr(addr string, isTLS bool) (net.Conn, error) {
 	var (
 		conn net.Conn
 		err  error
 	)
 	if isTLS {
-		conn, err = tls.Dial("tcp", addr, tlsopts)
+		conn, err = tls.Dial("tcp", addr, cg.tlsconf)
 	} else {
 		conn, err = net.Dial("tcp", addr)
 	}
@@ -474,7 +494,7 @@ ML:
 			logger.Debug("+ [Message] Received .", "userId", clbc.client.GetIdentifier(), "data", packet.Data)
 			clbc.dispatch(packet)
 		case <-clbc.ErrChan:
-			logger.Warn("- [Shit] went down. Panic.")
+			logger.Warn("- [Shit] went down. Exit.")
 			break ML
 		default:
 			time.Sleep(time.Millisecond * 2)
@@ -490,9 +510,9 @@ ML:
 	default:
 		logger.FDebug("Handle", "- [Handler/State] Unknown state (neither statgodown or staterr)")
 	}
-	logger.Debug("before corous")
+	logger.FDebug("Handle", "* [Handler/Exit] waiting for jobs to finish.")
 	clbc.corous.Wait()
-	logger.Debug("after corous")
+	logger.FDebug("Handle", "* [Handler/Exit] all jobs are finished.")
 }
 
 func (clbc *CLBConnection) SetClient(cl protobase.ClientInterface) {
