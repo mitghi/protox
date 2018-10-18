@@ -77,6 +77,7 @@ type Options struct {
 	ClientStore        protobase.CLStoreInterface
 	ClientDelegate     server.ClientDelegate
 	ConnectionDelegate server.ConnectionDelegate
+	ServerConf         server.ServerConfigs
 	ShutdownDeadline   time.Duration
 	Exit               chan struct{}
 }

@@ -47,8 +47,17 @@ var (
 func NewBroker(opts Options) protobase.BrokerInterface {
 	var (
 		ret *Broker = &Broker{}
+		err error
 	)
-	ret.server = server.NewServer()
+	if opts.ServerConf.Config != nil {
+		ret.server, err = server.NewServerWithConfigs(opts.ServerConf)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+	} else {
+		ret.server = server.NewServer()
+	}
 	ret.exitch = ret.server.GetErrChan()
 	if opts.Auth != nil {
 		ret.server.SetAuthenticator(opts.Auth)
