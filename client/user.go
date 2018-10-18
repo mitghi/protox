@@ -24,7 +24,6 @@ package client
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -247,17 +246,16 @@ func (u *CLBUser) Connect() (err error) {
 				//   by corresponding receiver
 				//   methods.
 				minslp      time.Duration = time.Millisecond * time.Duration(u.MinSecMRS)
-				maxslp      time.Duration = time.Second * time.Duration(u.SecMRS)
+				maxslp      time.Duration = time.Millisecond * time.Duration(u.SecMRS)
 				dur         time.Duration = minslp
 				attempt     int           = 0
-				shouldRetry bool          = (u.MaxRetry <= 0)
+				shouldRetry bool          = (u.MaxRetry > 0)
 			)
 		ML:
 			for u.IsRunning() {
 				// enter main loop
 				// it exits on faulty connection
 				u.Conn.Handle(nil)
-				fmt.Println(dur)
 				time.Sleep(dur)
 				dur *= 2
 				attempt += 1
