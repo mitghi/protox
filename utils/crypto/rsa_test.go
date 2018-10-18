@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package crypto
 
@@ -95,5 +95,12 @@ func TestRSA(t *testing.T) {
 	_, err = MakeRSA(1023)
 	if err == nil {
 		t.Fatal("err==nil, expected !nil")
+	}
+}
+
+func TestRSA2(t *testing.T) {
+	_, err := LoadX509KeyPair("/playground/cert/server.pem", "/playground/cert/key.pem")
+	if err != nil {
+		t.Fatal("err != nil, expected nil.", err)
 	}
 }

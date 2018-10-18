@@ -18,7 +18,7 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+ */
 
 package crypto
 
@@ -39,9 +39,9 @@ func NewCrypto() *Crypto {
 }
 
 // SetSalt assigns internal salt value to a given `salt` byte array. It must be called on each new `Crypto` instance.
-func (self *Crypto) SetSalt(salt *[]byte) {
-	self.salt = make([]byte, len((*salt)))
-	copy(self.salt, (*salt))
+func (c *Crypto) SetSalt(salt *[]byte) {
+	c.salt = make([]byte, len((*salt)))
+	copy(c.salt, (*salt))
 }
 
 // NewCryptoFromArgs returns a new struct pointer of type `Crypto` and sets the internal according to given arguments. It is not neccessary to use this function directly as the default settings used by `NewCrypto()` is sufficient.
@@ -57,8 +57,8 @@ func NewCryptoFromArgs(salt *[]byte, n int, r int, p int, keyLen int) *Crypto {
 }
 
 // Encrypt returns the encrypted data. It may fail, error should be explicitely checked to assure correctness.
-func (self *Crypto) Encrypt(input *[]byte) (enc string, err error) {
-	buff, err := scrypt.Key((*input), self.salt, self.n, self.r, self.p, self.keyLen)
+func (c *Crypto) Encrypt(input *[]byte) (enc string, err error) {
+	buff, err := scrypt.Key((*input), c.salt, c.n, c.r, c.p, c.keyLen)
 	if err != nil {
 		return "", err
 	}
@@ -66,6 +66,6 @@ func (self *Crypto) Encrypt(input *[]byte) (enc string, err error) {
 }
 
 // Decrypt returns the decrypted data. Simlilar to `Encrypt`, error must be checked explicitely.
-func (self *Crypto) Decrypt(input *[]byte) (dec string, err error) {
-	return self.Encrypt(input)
+func (c *Crypto) Decrypt(input *[]byte) (dec string, err error) {
+	return c.Encrypt(input)
 }
