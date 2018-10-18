@@ -67,144 +67,129 @@ var uidstr func(protobase.EDProtocol) string = func(msg protobase.EDProtocol) st
 	return uuid.UUID(msg.UUID()).String()
 }
 
-func (self *MessageBox) AddInbound(msg protobase.EDProtocol) bool {
-	self.RLock()
-	defer self.RUnlock()
+func (mb *MessageBox) AddInbound(msg protobase.EDProtocol) bool {
+	mb.RLock()
+	defer mb.RUnlock()
 
 	var (
 		cid string = uidstr(msg)
 	)
 
-	self.in.Lock()
+	mb.in.Lock()
 
-	if _, ok := self.in.messages[cid]; ok {
-		self.in.Unlock()
+	if _, ok := mb.in.messages[cid]; ok {
+		mb.in.Unlock()
 		return false
 	}
-	self.in.messages[cid] = msg
+	mb.in.messages[cid] = msg
 
-	self.in.Unlock()
+	mb.in.Unlock()
 
 	return true
 }
 
-func (self *MessageBox) AddOutbound(msg protobase.EDProtocol) bool {
-	self.RLock()
+func (mb *MessageBox) AddOutbound(msg protobase.EDProtocol) bool {
+	mb.RLock()
 	var cid string = uidstr(msg)
-	self.out.Lock()
+	mb.out.Lock()
 
-	if _, ok := self.out.messages[cid]; ok == true {
-		self.out.Unlock()
-		self.RUnlock()
+	if _, ok := mb.out.messages[cid]; ok == true {
+		mb.out.Unlock()
+		mb.RUnlock()
 
 		return false
 	}
-	self.out.messages[cid] = msg
+	mb.out.messages[cid] = msg
 
-	self.out.Unlock()
-	self.RUnlock()
+	mb.out.Unlock()
+	mb.RUnlock()
 
 	return true
 }
 
-func (self *MessageBox) DeleteIn(msg protobase.EDProtocol) bool {
-	self.RLock()
+func (mb *MessageBox) DeleteIn(msg protobase.EDProtocol) bool {
+	mb.RLock()
 	var cid string = uidstr(msg)
-	self.in.Lock()
+	mb.in.Lock()
 
-	if _, ok := self.in.messages[cid]; ok == false {
-		self.in.Unlock()
-		self.RUnlock()
+	if _, ok := mb.in.messages[cid]; ok == false {
+		mb.in.Unlock()
+		mb.RUnlock()
 
 		return false
 	}
-	delete(self.in.messages, cid)
+	delete(mb.in.messages, cid)
 
-	self.in.Unlock()
-	self.RUnlock()
+	mb.in.Unlock()
+	mb.RUnlock()
 
 	return true
 }
 
 // DeleteOut disassociates a client from a outgoing packet.
-func (self *MessageBox) DeleteOut(msg protobase.EDProtocol) bool {
-	self.RLock()
+func (mb *MessageBox) DeleteOut(msg protobase.EDProtocol) bool {
+	mb.RLock()
 	var cid string = uidstr(msg)
-	self.out.Lock()
+	mb.out.Lock()
 
-	if _, ok := self.out.messages[cid]; ok == false {
-		self.out.Unlock()
-		self.RUnlock()
+	if _, ok := mb.out.messages[cid]; ok == false {
+		mb.out.Unlock()
+		mb.RUnlock()
 
 		return false
 	}
-	delete(self.out.messages, cid)
+	delete(mb.out.messages, cid)
 
-	self.out.Unlock()
-	self.RUnlock()
+	mb.out.Unlock()
+	mb.RUnlock()
 
 	return true
 }
 
 // GetAllOut returns all of available outgoing packets of a given client.
-func (self *MessageBox) GetAllOut() (msgs []protobase.EDProtocol) {
-	self.RLock()
-	self.out.Lock()
+func (mb *MessageBox) GetAllOut() (msgs []protobase.EDProtocol) {
+	mb.RLock()
+	mb.out.Lock()
 
-	for _, msg := range self.out.messages {
+	for _, msg := range mb.out.messages {
 		msgs = append(msgs, msg)
 	}
-	order := self.out.order
+	order := mb.out.order
 	sort.Slice(msgs, func(i, j int) bool {
 		a, b := msgs[i], msgs[j]
 		astr, bstr := uidstr(a), uidstr(b)
 		return order[astr] < order[bstr]
 	})
 
-	self.out.Unlock()
-	self.RUnlock()
+	mb.out.Unlock()
+	mb.RUnlock()
 
 	return msgs
 }
 
-func (self *MessageBox) GetAllOutStr() (msgs []string) {
-	self.RLock()
-	self.out.Lock()
+func (mb *MessageBox) GetAllOutStr() (msgs []string) {
+	mb.RLock()
+	mb.out.Lock()
 
-	for _, msg := range self.out.messages {
+	for _, msg := range mb.out.messages {
 		var sid string = uidstr(msg)
 		msgs = append(msgs, sid)
 	}
 
-	self.out.Unlock()
-	self.RUnlock()
+	mb.out.Unlock()
+	mb.RUnlock()
 
 	return msgs
 }
 
-func (self *MessageBox) GetInbound(uid uuid.UUID) (protobase.EDProtocol, bool) {
-	self.RLock()
-	self.in.Lock()
+func (mb *MessageBox) GetInbound(uid uuid.UUID) (protobase.EDProtocol, bool) {
+	mb.RLock()
+	mb.in.Lock()
 
-	p, ok := self.in.messages[uid.String()]
+	p, ok := mb.in.messages[uid.String()]
 
-	self.in.Unlock()
-	self.RUnlock()
-
-	if !ok || p == nil {
-		return nil, false
-	}
-	return p, true
-}
-
-func (self *MessageBox) GetOutbound(uid uuid.UUID) (protobase.EDProtocol, bool) {
-	self.RLock()
-	self.out.Lock()
-
-	p, ok := self.out.messages[uid.String()]
-
-	self.out.Unlock()
-	self.RUnlock()
+	mb.in.Unlock()
+	mb.RUnlock()
 
 	if !ok || p == nil {
 		return nil, false
@@ -212,24 +197,39 @@ func (self *MessageBox) GetOutbound(uid uuid.UUID) (protobase.EDProtocol, bool) 
 	return p, true
 }
 
-func (self *MessageBox) GetIDStoreO() (idstore protobase.MSGIDInterface) {
-	self.RLock()
-	self.out.Lock()
+func (mb *MessageBox) GetOutbound(uid uuid.UUID) (protobase.EDProtocol, bool) {
+	mb.RLock()
+	mb.out.Lock()
 
-	idstore = self.in.ids
+	p, ok := mb.out.messages[uid.String()]
 
-	self.out.Unlock()
-	self.RUnlock()
+	mb.out.Unlock()
+	mb.RUnlock()
+
+	if !ok || p == nil {
+		return nil, false
+	}
+	return p, true
+}
+
+func (mb *MessageBox) GetIDStoreO() (idstore protobase.MSGIDInterface) {
+	mb.RLock()
+	mb.out.Lock()
+
+	idstore = mb.in.ids
+
+	mb.out.Unlock()
+	mb.RUnlock()
 	return idstore
 }
 
-func (self *MessageBox) GetIDStoreI() (idstore protobase.MSGIDInterface) {
-	self.RLock()
-	self.in.Lock()
+func (mb *MessageBox) GetIDStoreI() (idstore protobase.MSGIDInterface) {
+	mb.RLock()
+	mb.in.Lock()
 
-	idstore = self.in.ids
+	idstore = mb.in.ids
 
-	self.in.Unlock()
-	self.RUnlock()
+	mb.in.Unlock()
+	mb.RUnlock()
 	return idstore
 }
