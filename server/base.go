@@ -63,10 +63,12 @@ const (
 	STMONITOR
 )
 
+type ServerType byte
+
 // Constants for server service types (Protox over : HTTP/S, MQTT, WS, REDIS PROTOCOL, .... )
 const (
 	// Protox over original protocol
-	ProtoOrigin byte = iota
+	ProtoOrigin ServerType = iota
 	// Protox over HTTP
 	ProtoHTTP
 	// Protox over HTTPS

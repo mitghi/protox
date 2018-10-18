@@ -46,23 +46,27 @@ func precheckOpts(opts *ServerConfigs) error {
 	if err != nil {
 		return SRVInvalidAddr
 	}
-	switch opts.Mode {
-	case ProtoTCP:
-		// NOTE:
-		// . temporarily its ok
-		return nil
-	case ProtoTLS:
-		if _, ok := opts.Config.(TCPOptions); !ok {
-			return SRVMissingOptions
+	if opts.Config != nil {
+		switch opts.Mode {
+		case ProtoTCP:
+			if _, ok := opts.Config.(TCPOptions); !ok {
+				return SRVMissingOptions
+			}
+			return nil
+		case ProtoTLS:
+			if _, ok := opts.Config.(TLSOptions); !ok {
+				return SRVMissingOptions
+			}
+			return nil
+		case ProtoSSL:
+			// TODO
+			return SRVInvalidMode
+		case ProtoUNIXSO:
+			// TODO
+			return SRVInvalidMode
+		default:
+			return SRVInvalidMode
 		}
-		return nil
-	case ProtoSSL:
-		// TODO
-		return SRVInvalidMode
-	case ProtoUNIXSO:
-		// TODO
-		return SRVInvalidMode
-	default:
-		return SRVInvalidMode
 	}
+	return nil
 }

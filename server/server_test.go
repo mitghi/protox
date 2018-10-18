@@ -23,7 +23,12 @@
 package server
 
 import (
+	"net"
 	"testing"
+)
+
+const (
+	logmode bool = false
 )
 
 func TestNewServerRouter(t *testing.T) {
@@ -36,9 +41,49 @@ func TestNewServerRouter(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to find topic.", err)
 	}
-	t.Log("router: associated map to the supplied topic.", m)
+	if logmode {
+		t.Log("router: associated map to the supplied topic.", m)
+	}
 	err = s.Router.Remove("test", "a/simple/topic")
 	if err != nil {
 		t.Fatal("failed to remove topic.", err)
 	}
+}
+
+func TestServeTCP(t *testing.T) {
+	var (
+		s        *Server
+		listener net.Listener
+		err      error
+	)
+	s, err = NewServerWithConfigs(ServerConfigs{
+		Config: TLSOptions{
+			Cert: "/playground/cert/server.pem",
+			Key:  "/playground/cert/key.pem",
+		},
+		Addr: "0.0.0.0:52909",
+		Mode: ProtoTLS,
+	})
+	if err != nil {
+		t.Fatal(cERR, err)
+	}
+	listener, err = s.serverInstance(":52909")
+	if err != nil {
+		t.Fatal(cERR, err)
+	}
+	if logmode {
+		t.Log(listener)
+	}
+	// s.SetClientHandler(func(user, pass, uid string) protobase.ClientInterface {
+	// 	fmt.Println("new client")
+	// 	return nil
+	// })
+	// go s.ServeTCP(":52909")
+	// time.Sleep(time.Second * 4)
+	// ch, err := s.Shutdown()
+	// if err != nil {
+	// 	t.Fatal(cERR, err)
+	// }
+	// <-ch
+	// fmt.Println("server stopped.")
 }

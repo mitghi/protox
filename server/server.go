@@ -49,19 +49,16 @@ func NewServer() (s *Server) {
 		heartbeat:  DefaultHeartbeat,
 		critical:   make(chan struct{}, 1),
 	}
-
 	return s
 }
 
 // NewServerWithConfigs creates a new server instance using options
 // given as `opts` argument and returns a pointer to it. It returns
 // an error in case of invalid options or unsucces.
-func NewServerWithConfigs(opts ServerConfigs) (*Server, error) {
-	var (
-		s *Server = NewServer()
-	)
+func NewServerWithConfigs(opts ServerConfigs) (s *Server, err error) {
+	s = NewServer()
 	s.opts = &opts
-	err := precheckOpts(s.opts)
+	err = precheckOpts(s.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -463,17 +460,9 @@ func (s *Server) RegisterClient(prc protobase.ProtoConnection) {
 	/* critical section - end */
 }
 
-func (s *Server) Serve() error {
+func (s *Server) Serve() (err error) {
 	// TODO
 	s.Setup()
-	if s.opts == nil {
-		// fallback to tcp server
-		// NOTE
-		// . this is for test, remove hard coded addr.
-		return s.ServeTCP(":52909")
-	} else {
-		// TODO
-		// . run server based on options
-	}
-	return nil
+	err = s.ServeTCP("")
+	return err
 }

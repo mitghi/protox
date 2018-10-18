@@ -34,6 +34,10 @@ import (
 // and returns a pointer to a `tls.Config`. It returns an error to indicate
 // a problem.
 func (s *Server) generateTLSConfig(opts *TLSOptions) (*tls.Config, error) {
+	return generateTLSConfig(opts)
+}
+
+func generateTLSConfig(opts *TLSOptions) (*tls.Config, error) {
 	var (
 		err      error
 		cert     tls.Certificate
