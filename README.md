@@ -58,7 +58,6 @@ This is the wishlist for version 1.0.
 - [ ] Runtime storage subsystem
 - [ ] Promiscuous mode ( security )
 - [ ] Runtime memory forensic ( security )
-- [ ] ML Layer
 
 # Setup ( development )
 
