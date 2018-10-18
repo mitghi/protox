@@ -19,12 +19,14 @@ import (
 var (
 	logger *logging.Logging
 
-	username *string
-	password *string
-	sr       *string
-	addr     string
-	qos      *int
-	user     *User
+	username    *string
+	password    *string
+	certificate *string
+	key         *string
+	sr          *string
+	addr        string
+	qos         *int
+	user        *User
 )
 
 func init() {
@@ -32,7 +34,8 @@ func init() {
 }
 
 func pcallback(opts protobase.OptionInterface, msg protobase.MsgInterface) {
-
+	// TODO
+	// . comment
 }
 
 func main() {
@@ -43,16 +46,17 @@ func main() {
 
 	username = flag.String("username", "", "username")
 	password = flag.String("password", "", "password")
+	certificate = flag.String("certificate", "./client/client.pem", "")
+	key = flag.String("key", "./client/client.key", "")
 	qos = flag.Int("qos", 0, "quality of service")
 	sr = flag.String("sr", "a/simple/route", "subscribe route")
-	flag.Parse()
 
+	flag.Parse()
 	if raddr := os.Getenv("PROTOX_ADDR"); raddr != "" {
 		addr = raddr
 	} else {
 		addr = ":52909"
 	}
-
 	opts := client.CLBOptions{
 		Addr:      addr,
 		MaxRetry:  10,
@@ -63,9 +67,17 @@ func main() {
 			return cl
 		},
 		StorageDelegate: messages.NewMessageBox(),
-		Conn:            networking.NewClientConnection(addr),
-		SecMRS:          5,
-		CFCallback:      nil,
+		Conn: func(addr string) (clbc *networking.CLBConnection) {
+			clbc = networking.NewClientConnection(addr)
+			err := clbc.SetupTLSConfig(*certificate, *key)
+			if err != nil {
+				logger.Fatal("- [NewClientConnection] unable to setup TLS. err:", err)
+				panic("unable to setup tls.")
+			}
+			return clbc
+		}(addr),
+		SecMRS:     5,
+		CFCallback: nil,
 	}
 	ui, _ := NewCLUI()
 	if ui == nil {
@@ -87,6 +99,6 @@ func main() {
 
 	<-sigs
 	user.Disconnect()
-	log.Println("received signal, exiting....")
+	logger.Debug("received signal, exiting....")
 	<-user.Exch
 }

@@ -7,7 +7,7 @@ TRACELEVEL=
 export RLOG_LOG_LEVEL=$DEBUG_LEVEL
 export RLOG_TRACE_LEVEL=$TRACELEVEL
 export RLOG_LOG_NOTIME=$NOTIME
-export RLOG_LOG_FILE="/tmp/demod.log"
+export RLOG_LOG_FILE="/tmp/cli.log"
 
 USR=test5
 PSWD='$2a$06$9wavlAtmNZ6623re2wturDO7yIBdEewfZcn4c5z4ydzJ/ydVJIZwJK'
