@@ -23,8 +23,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/mitghi/protox/client"
 	"github.com/mitghi/protox/protobase"
 )
@@ -34,16 +32,16 @@ type User struct {
 }
 
 func (self *User) Connected(opts protobase.OptionInterface) bool {
-	fmt.Printf("[USER] %s connected.\n", self.Username)
+	logger.FInfof("Connected", "+ [USER] %s connected.\n", self.Username)
 	return true
 }
 
 func (self *User) Disconnected(opts protobase.OptCode) {
-	fmt.Printf("[USER] %s disconnected.\n", self.Username)
+	logger.FInfof("Disconnected", "+ [USER] %s disconnected.\n", self.Username)
 }
 
 func (self *User) Subscribe(msg protobase.MsgInterface) {
-	fmt.Printf("[USER] %s subscribed to %s.\n", self.Username, msg.Envelope().Route())
+	logger.FInfof("Subscribe", "+ [USER] %s subscribed to %s.\n", self.Username, msg.Envelope().Route())
 }
 
 func (self *User) Publish(msg protobase.MsgInterface) {
@@ -58,8 +56,8 @@ func (self *User) Publish(msg protobase.MsgInterface) {
 	)
 	switch dir {
 	case protobase.MDInbound:
-		fmt.Printf("[USER][publish] %s is sending to topic [%s], message [%s].\n", self.Username, topic, string(message))
+		logger.FInfof("Publish", "+ [USER][Publish] %s is sending to topic [%s], message [%s].\n", self.Username, topic, string(message))
 	case protobase.MDOutbound:
-		fmt.Printf("[USER][publish] %s has received tpic [%s], message [%s].\n", self.Username, topic, string(message))
+		logger.FInfof("Publish", "+ [USER][Publish] %s has received tpic [%s], message [%s].\n", self.Username, topic, string(message))
 	}
 }

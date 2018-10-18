@@ -30,9 +30,19 @@ import (
 	"github.com/mitghi/protox/auth"
 	"github.com/mitghi/protox/broker"
 	"github.com/mitghi/protox/client"
+	"github.com/mitghi/protox/logging"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/server"
 )
+
+
+var (
+	logger *logging.Logging
+)
+
+func init(){
+	logger = logging.NewLogger("DemoE")
+}
 
 // clientDelegate is the delegate used by server to
 // create a compatible `protobase.ClientInterface`
@@ -153,6 +163,7 @@ func main() {
 			Mode: server.ProtoTLS,
 			Addr: ":52909",
 		},
+		ClientDelegate: clientDelegate,
 	}).(*broker.Broker)
 	// run the broker
 	ok := brk.Start()
