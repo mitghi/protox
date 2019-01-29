@@ -1,6 +1,6 @@
 # protox
 
-Implementation of high performance [protox](https://protox.xyz) message broker.
+High performance [protox](https://protox.xyz) message broker.
 
 version : **Alpha**.
 
@@ -23,9 +23,9 @@ objectives for **Beta** version:
 
 - [X] Retain Storage
 - [X] Permissions
-- [ ] one-to-one  Request/Response
+- [X] Message Queue
 - [ ] Persistent storage
-- [ ] Message Queue
+- [ ] One-to-One  Request/Response ( support 3rd party endpoints )
 - [ ] Config parser
 
 **TODO:** whitebox test suits
@@ -39,7 +39,7 @@ objectives for **Beta** version:
 
 # Features
 
-This is the wishlist for version 1.0.
+This is the roadmap for version 1.0.
 
 - [ ] [Raft Consensus Algorithm](https://raft.github.io/raft.pdf)
 - [ ] Proposals-over-Network (ex. job delegation, polls, stable matching, ... )
@@ -53,11 +53,13 @@ This is the wishlist for version 1.0.
 - [ ] Management Console
 - [ ] Signed Messages ( RSA, PGP, SHA256, SCRYPT, ... )
 - [ ] Pluggable Authenication subsystem
+- [ ] Pluggable Protocols 
 - [ ] Plugins subsystem
 - [ ] Cluster mode
 - [ ] Runtime storage subsystem
 - [ ] Promiscuous mode ( security )
 - [ ] Runtime memory forensic ( security )
+- [ ] 6LoWPAN integration
 
 # Setup ( development )
 
@@ -283,4 +285,5 @@ List of protox client libraries.
 - [x] [Protox Client](https://github.com/mitghi/protox_client) ( Golang ).
 - [ ] [Protox Client](https://github.com/mitghi/protox_clswift) ( Swift ).
 - [ ] [Protox Client](https://github.com/mitghi/protox_clc) ( C ).
+- [ ] [Protox Client](https://github.com/mitghi/protox_clc) ( C++ ).
 - [ ] [Protox Client](https://github.com/mitghi/protox_clpy) ( Python ).
