@@ -157,8 +157,8 @@ func main() {
 		Auth: authsys,
 		ServerConf: server.ServerConfigs{
 			Config: server.TLSOptions{
-				Cert: "/Users/myaccount/go/src/github.com/mitghi/protox/config/cert/server.pem",
-				Key:  "/Users/myaccount/go/src/github.com/mitghi/protox/config/cert/key.pem",
+				Cert: "/Users/mitghi/go/src/github.com/mitghi/protox/config/cert/server.pem",
+				Key:  "/Users/mitghi/go/src/github.com/mitghi/protox/config/cert/key.pem",
 			},
 			Mode: server.ProtoTLS,
 			Addr: ":52909",
