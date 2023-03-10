@@ -25,7 +25,7 @@ package logging
 import (
 	"fmt"
 
-	"github.com/mitghi/rlog"
+  "github.com/romana/rlog"
 )
 
 const logformat = "%s <- (*%s).%s"

@@ -17,6 +17,7 @@ package rlog
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -97,6 +98,7 @@ type rlogConfig struct {
 	logStream       string // Name of logstream: stdout, stderr or NONE
 	logNoTime       string // Flag to determine if date/time is logged at all
 	showCallerInfo  string // Flag to determine if caller info is logged
+	showGoroutineID string // Flag to determine if goroute ID shows in caller info
 	confCheckInterv string // Interval in seconds for checking config file
 }
 
@@ -111,10 +113,10 @@ var configFromEnvVars rlogConfig
 // config file and produce pre-processed configuration values, which are stored
 // in those variables below.
 var (
-	settingShowCallerInfo bool   // whether we log caller info
-	settingDateTimeFormat string // flags for date/time output
-	settingLogFile        string // logfile name
-	settingConfFile       string // config file name
+	settingShowCallerInfo  bool   // whether we log caller info
+	settingShowGoroutineID bool   // whether we show goroutine ID in caller info
+	settingDateTimeFormat  string // flags for date/time output
+	settingConfFile        string // config file name
 	// how often we check the conf file
 	settingCheckInterval time.Duration = 15 * time.Second
 
@@ -272,9 +274,8 @@ func (f filter) match(filename string, level int) (bool, bool) {
 func updateIfNeeded(oldVal string, newVal string, priority bool) string {
 	if priority || oldVal == "" {
 		return newVal
-	} else {
-		return oldVal
 	}
+	return oldVal
 }
 
 // updateConfigFromFile reads a configuration from the specified config file.
@@ -291,13 +292,13 @@ func updateConfigFromFile(config *rlogConfig) {
 
 	// Scan over the config file, line by line
 	file, err := os.Open(settingConfFile)
-	defer file.Close()
 	if err != nil {
 		// Any error while attempting to open the logfile ignored. In many
 		// cases there won't even be a config file, so we should not produce
 		// any noise.
 		return
 	}
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	i := 0
@@ -343,6 +344,8 @@ func updateConfigFromFile(config *rlogConfig) {
 			config.logNoTime = updateIfNeeded(config.logNoTime, val, priority)
 		case "RLOG_CALLER_INFO":
 			config.showCallerInfo = updateIfNeeded(config.showCallerInfo, val, priority)
+		case "RLOG_GOROUTINE_ID":
+			config.showGoroutineID = updateIfNeeded(config.showGoroutineID, val, priority)
 		default:
 			rlogIssue("Unknown or illegal setting name in config file %s:%d. Ignored.",
 				settingConfFile, i)
@@ -350,12 +353,10 @@ func updateConfigFromFile(config *rlogConfig) {
 	}
 }
 
-// init extracts settings for our logger from environment variables when the
-// module is imported and calls the actual initialization function with that
-// configuration.
-func init() {
+// configFromEnv extracts settings for our logger from environment variables.
+func configFromEnv() rlogConfig {
 	// Read the initial configuration from the environment variables
-	config := rlogConfig{
+	return rlogConfig{
 		logLevel:        os.Getenv("RLOG_LOG_LEVEL"),
 		traceLevel:      os.Getenv("RLOG_TRACE_LEVEL"),
 		logTimeFormat:   os.Getenv("RLOG_TIME_FORMAT"),
@@ -364,59 +365,22 @@ func init() {
 		logStream:       strings.ToUpper(os.Getenv("RLOG_LOG_STREAM")),
 		logNoTime:       os.Getenv("RLOG_LOG_NOTIME"),
 		showCallerInfo:  os.Getenv("RLOG_CALLER_INFO"),
+		showGoroutineID: os.Getenv("RLOG_GOROUTINE_ID"),
 		confCheckInterv: os.Getenv("RLOG_CONF_CHECK_INTERVAL"),
 	}
-	// Pass the environment variable config through to the next stage, which
-	// produces an updated config based on config file values.
-	initialize(config, true)
 }
 
-// initialize translates config items into initialized data structures,
-// config values and freshly created or opened config files, if necessary.
-// This function prepares everything for the fast and efficient processing of
-// the actual log functions.
-// Importantly, it takes the passed in configuration and combines it with any
-// configuration provided in a configuration file.
-// If the reInitEnvVars flag is set then the passed-in configuration overwrites
-// the settings stored from the environment variables, which we need for our tests.
-func initialize(config rlogConfig, reInitEnvVars bool) {
-	var err error
+// init loads configuration from the environment variables and the
+// configuration file when the module is imorted.
+func init() {
+	UpdateEnv()
+}
 
-	initMutex.Lock()
-	defer initMutex.Unlock()
-
-	if reInitEnvVars {
-		configFromEnvVars = config
-	}
-
-	// Read and merge configuration from the config file
-	updateConfigFromFile(&config)
-
-	var checkTime int
-	checkTime, err = strconv.Atoi(config.confCheckInterv)
-	if err == nil {
-		settingCheckInterval = time.Duration(checkTime) * time.Second
-	} else {
-		if config.confCheckInterv != "" {
-			rlogIssue("Cannot parse config check interval value '%s'. Using default.",
-				config.confCheckInterv)
-		}
-	}
-	logNoTime := isTrueBoolString(config.logNoTime)
-	settingShowCallerInfo = isTrueBoolString(config.showCallerInfo)
-
-	// initialize filters for trace (by default no trace output) and log levels
-	// (by default INFO level).
-	newTraceFilterSpec := new(filterSpec)
-	newTraceFilterSpec.fromString(config.traceLevel, true, noTraceOutput)
-	traceFilterSpec = newTraceFilterSpec
-
-	newLogFilterSpec := new(filterSpec)
-	newLogFilterSpec.fromString(config.logLevel, false, levelInfo)
-	logFilterSpec = newLogFilterSpec
-
-	// Evaluate the specified date/time format
+// getTimeFormat returns the time format we should use for time stamps in log
+// lines, or nothing if "no time logging" has been requested.
+func getTimeFormat(config rlogConfig) string {
 	settingDateTimeFormat = ""
+	logNoTime := isTrueBoolString(config.logNoTime)
 	if !logNoTime {
 		// Store the format string for date/time logging. Allowed values are
 		// all the constants specified in
@@ -452,6 +416,55 @@ func initialize(config rlogConfig, reInitEnvVars bool) {
 		}
 		settingDateTimeFormat = f + " "
 	}
+	return settingDateTimeFormat
+}
+
+// initialize translates config items into initialized data structures,
+// config values and freshly created or opened config files, if necessary.
+// This function prepares everything for the fast and efficient processing of
+// the actual log functions.
+// Importantly, it takes the passed in configuration and combines it with any
+// configuration provided in a configuration file.
+// If the reInitEnvVars flag is set then the passed-in configuration overwrites
+// the settings stored from the environment variables, which we need for our tests.
+func initialize(config rlogConfig, reInitEnvVars bool) {
+	var err error
+
+	initMutex.Lock()
+	defer initMutex.Unlock()
+
+	if reInitEnvVars {
+		configFromEnvVars = config
+	}
+
+	// Read and merge configuration from the config file
+	updateConfigFromFile(&config)
+
+	var checkTime int
+	checkTime, err = strconv.Atoi(config.confCheckInterv)
+	if err == nil {
+		settingCheckInterval = time.Duration(checkTime) * time.Second
+	} else {
+		if config.confCheckInterv != "" {
+			rlogIssue("Cannot parse config check interval value '%s'. Using default.",
+				config.confCheckInterv)
+		}
+	}
+	settingShowCallerInfo = isTrueBoolString(config.showCallerInfo)
+	settingShowGoroutineID = isTrueBoolString(config.showGoroutineID)
+
+	// initialize filters for trace (by default no trace output) and log levels
+	// (by default INFO level).
+	newTraceFilterSpec := new(filterSpec)
+	newTraceFilterSpec.fromString(config.traceLevel, true, noTraceOutput)
+	traceFilterSpec = newTraceFilterSpec
+
+	newLogFilterSpec := new(filterSpec)
+	newLogFilterSpec.fromString(config.logLevel, false, levelInfo)
+	logFilterSpec = newLogFilterSpec
+
+	// Evaluate the specified date/time format
+	settingDateTimeFormat = getTimeFormat(config)
 
 	// By default we log to stderr...
 	// Evaluating whether a different log stream should be used.
@@ -503,6 +516,16 @@ func initialize(config rlogConfig, reInitEnvVars bool) {
 func SetConfFile(confFileName string) {
 	configFromEnvVars.confFile = confFileName
 	initialize(configFromEnvVars, false)
+}
+
+// UpdateEnv extracts settings for our logger from environment variables and
+// calls the actual initialization function with that configuration.
+func UpdateEnv() {
+	// Get environment-based configuration
+	config := configFromEnv()
+	// Pass the environment variable config through to the next stage, which
+	// produces an updated config based on config file values.
+	initialize(config, true)
 }
 
 // SetOutput re-wires the log output to a new io.Writer. By default rlog
@@ -568,8 +591,8 @@ func basicLog(logLevel int, traceLevel int, isLocked bool, format string, prefix
 	}
 
 	// Extract information about the caller of the log function, if requested.
-	var callingFuncName string = ""
-	var moduleAndFileName string = ""
+	var callingFuncName string
+	var moduleAndFileName string
 	pc, fullFilePath, line, ok := runtime.Caller(2)
 	if ok {
 		callingFuncName = runtime.FuncForPC(pc).Name()
@@ -578,10 +601,10 @@ func basicLog(logLevel int, traceLevel int, isLocked bool, format string, prefix
 		// different path formats on different systems, so we use that instead
 		// of just string-split.
 		dirPath, fileName := path.Split(fullFilePath)
-		var moduleName string = ""
+		var moduleName string
 		if dirPath != "" {
 			dirPath = dirPath[:len(dirPath)-1]
-			dirPath, moduleName = path.Split(dirPath)
+			_, moduleName = path.Split(dirPath)
 		}
 		moduleAndFileName = moduleName + "/" + fileName
 	}
@@ -603,8 +626,13 @@ func basicLog(logLevel int, traceLevel int, isLocked bool, format string, prefix
 
 	callerInfo := ""
 	if settingShowCallerInfo {
-		callerInfo = fmt.Sprintf("[%s:%d (%s)] ", moduleAndFileName,
-			line, callingFuncName)
+		if settingShowGoroutineID {
+			callerInfo = fmt.Sprintf("[%d:%d %s:%d (%s)] ", os.Getpid(),
+				getGID(), moduleAndFileName, line, callingFuncName)
+		} else {
+			callerInfo = fmt.Sprintf("[%d %s:%d (%s)] ", os.Getpid(),
+				moduleAndFileName, line, callingFuncName)
+		}
 	}
 
 	// Assemble the actual log line
@@ -618,11 +646,23 @@ func basicLog(logLevel int, traceLevel int, isLocked bool, format string, prefix
 	logLine := fmt.Sprintf("%s%-9s: %s%s",
 		now.Format(settingDateTimeFormat), levelDecoration, callerInfo, msg)
 	if logWriterStream != nil {
-		logWriterStream.Printf(logLine)
+		logWriterStream.Print(logLine)
 	}
 	if logWriterFile != nil {
-		logWriterFile.Printf(logLine)
+		logWriterFile.Print(logLine)
 	}
+}
+
+// getGID gets the current goroutine ID (algorithm from
+// https://blog.sgmansfield.com/2015/12/goroutine-ids/) by
+// unwinding the stack.
+func getGID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
 }
 
 // Trace is for low level tracing of activities. It takes an additional 'level'

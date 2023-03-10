@@ -34,7 +34,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
-	"github.com/mitghi/timer"
 )
 
 // ensure interface (protocol) conformance
@@ -62,7 +61,7 @@ type CLBConnection struct {
 	State          protobase.ConnectionState
 	storage        protobase.MessageBox
 	client         protobase.ClientInterface
-	pinger         *timer.Timer
+	pinger         *time.Ticker
 	tlsconf        *tls.Config
 	heartbeat      int
 	justStarted    bool
@@ -432,7 +431,7 @@ func (clbc *CLBConnection) Handle(_ protobase.PacketInterface) {
 	// prevent data race by concurrent access
 	/* critical section */
 	clbc.clock.Lock()
-	clbc.pinger = timer.NewTimer(dur)
+	clbc.pinger = time.NewTicker(dur)
 	// increment work group
 	clbc.corous.Add(2)
 	go clbc.recvHandler()

@@ -32,7 +32,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitghi/protox/protobase"
 	"github.com/mitghi/protox/protocol"
-	"github.com/mitghi/timer"
 )
 
 // Ensure protocol (interface) conformance.
@@ -63,7 +62,7 @@ type Connection struct {
 	storage            protobase.MessageStorage                               // storage subsystem
 	client             protobase.ClientInterface                              // client subsystem
 	State              protobase.ConnectionState                              // connection state
-	deadline           *timer.Timer                                           // ping timeout
+	deadline           *time.Ticker                                           // ping timeout
 	connTimeout        int                                                    // connection timeout (initial)
 	heartbeat          int                                                    // maximum idle time
 	unclean            uint32                                                 // refurbished flag
@@ -326,7 +325,7 @@ func (c *Connection) Handle() {
 	go c.recvHandler()
 	c.client.Connected(nil)          // TODO: pass execution to background thread; in case of blocking call.
 	c.SetStatus(STATONLINE)          // connection is established
-	c.deadline = timer.NewTimer(dur) // ping interval
+	c.deadline = time.NewTicker(dur) // ping interval
 	c.server.NotifyConnected(c)      // perform blocking call ( ensure serial execution )
 	// main loop
 ML:

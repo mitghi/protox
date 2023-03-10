@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	buffpool "github.com/mitghi/lfpool"
 	"github.com/mitghi/protox/containers"
 	"github.com/mitghi/protox/messages"
 )
@@ -13,7 +12,7 @@ import (
 type Subs struct {
 	sync.RWMutex
 	*containers.Radix
-	*buffpool.BuffPool
+	*BuffPool
 	cache subcache
 }
 
@@ -34,12 +33,12 @@ func NewSubs(ralloc int) *Subs {
 	result := &Subs{
 		cache:    subcache{make(map[string]*subcacheline), 0, 0, 0, 0},
 		Radix:    containers.NewRadix(ralloc),
-		BuffPool: buffpool.NewBuffPool(),
+		BuffPool: NewBuffPool(),
 	}
 	return result
 }
 
-func NewSubsWithBuffer(ralloc int, buff *buffpool.BuffPool) *Subs {
+func NewSubsWithBuffer(ralloc int, buff *BuffPool) *Subs {
 	result := &Subs{
 		cache:    subcache{make(map[string]*subcacheline), 0, 0, 0, 0},
 		Radix:    containers.NewRadix(ralloc),
@@ -87,7 +86,7 @@ func (s *subinfo) get(uid string) (*subscription, bool) {
 
 func (s *Subs) searchPath(path []byte, sep string, callback func(**containers.RDXNode, [][]byte, int, int)) error {
 	var (
-		buff  *buffpool.Buffer = s.GetBuffer(len(path))
+		buff  *Buffer = s.GetBuffer(len(path))
 		paths [][]byte
 		plen  int
 		curr  **containers.RDXNode
@@ -184,7 +183,7 @@ func (s *Subs) wldCheck(node **containers.RDXNode) *containers.RDXNode {
 
 func (s *Subs) insertPath(path []byte, value interface{}, sep string, callback func(**containers.RDXNode, int, int)) **containers.RDXNode {
 	var (
-		buff  *buffpool.Buffer = s.GetBuffer(len(path))
+		buff  *Buffer = s.GetBuffer(len(path))
 		paths [][]byte
 		plen  int
 		curr  **containers.RDXNode
